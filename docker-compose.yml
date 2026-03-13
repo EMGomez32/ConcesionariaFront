@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: concesionaria-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: concesionaria
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./BackConcesionaria
+      dockerfile: Dockerfile
+    container_name: concesionaria-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/concesionaria?sslmode=disable
+      - PORT=3000
+      - NODE_ENV=production
+      - JWT_SECRET=super_secret_dev_key_123
+      - JWT_REFRESH_SECRET=super_secret_refresh_dev_key_456
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - LOG_LEVEL=debug
+    command: sh -c "npx prisma db push && npm start"
+    depends_on:
+      - db
+
+  prisma-studio:
+    build:
+      context: ./BackConcesionaria
+      dockerfile: Dockerfile
+    container_name: concesionaria-prisma-studio
+    restart: always
+    ports:
+      - "5555:5555"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/concesionaria?sslmode=disable
+    command: npx prisma studio --port 5555 --browser none
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./FrontConcesionaria
+      dockerfile: Dockerfile
+    container_name: concesionaria-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
