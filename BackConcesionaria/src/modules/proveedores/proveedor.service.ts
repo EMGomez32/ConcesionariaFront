@@ -1,30 +1,31 @@
-import { Prisma, Proveedor } from '@prisma/client';
+import type { Prisma, Proveedor } from '@prisma/client';
 import prisma from '../../prisma';
 import ApiError from '../../utils/ApiError';
-import { QueryOptions, PaginatedResponse } from '../../types/common';
+import type { QueryOptions, PaginatedResponse } from '../../types/common';
 
 export const getProveedores = async (
     filter: Prisma.ProveedorWhereInput,
     options: QueryOptions
 ): Promise<PaginatedResponse<Proveedor>> => {
-    const { limit = 20, page = 1, sortBy = 'createdAt', sortOrder = 'desc' } = options;
-    const limitNum = parseInt(limit as string, 10);
-    const pageNum = parseInt(page as string, 10);
+    const limit = Number(options.limit) || 20;
+    const page = Number(options.page) || 1;
+    const sortBy = options.sortBy || 'createdAt';
+    const sortOrder = options.sortOrder || 'desc';
 
     const results = await prisma.proveedor.findMany({
         where: filter,
-        take: limitNum,
-        skip: (pageNum - 1) * limitNum,
-        orderBy: { [sortBy as string]: sortOrder },
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy: { [sortBy]: sortOrder },
     });
 
     const total = await prisma.proveedor.count({ where: filter });
 
     return {
         results,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
         totalResults: total,
     };
 };

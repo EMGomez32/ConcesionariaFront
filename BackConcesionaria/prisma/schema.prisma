@@ -160,6 +160,8 @@ model Proveedor {
   tipo            String?
   telefono        String?
   email           String?
+  provincia       String?
+  departamento    String?
   direccion       String?
   activo          Boolean           @default(true)
   createdAt       DateTime          @default(now()) @map("created_at")

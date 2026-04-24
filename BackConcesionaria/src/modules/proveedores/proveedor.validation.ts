@@ -5,6 +5,8 @@ export const createProveedor = [
     body('tipo').optional().isString(),
     body('telefono').optional().isString(),
     body('email').optional().isEmail().withMessage('Email inválido'),
+    body('provincia').optional().isString(),
+    body('departamento').optional().isString(),
     body('direccion').optional().isString(),
     body('activo').optional().isBoolean(),
 ];
@@ -14,6 +16,8 @@ export const updateProveedor = [
     body('tipo').optional().isString(),
     body('telefono').optional().isString(),
     body('email').optional().isEmail().withMessage('Email inválido'),
+    body('provincia').optional().isString(),
+    body('departamento').optional().isString(),
     body('direccion').optional().isString(),
     body('activo').optional().isBoolean(),
 ];

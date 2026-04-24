@@ -239,12 +239,22 @@ const ProveedoresPage: React.FC = () => {
                                     </div>
                                     <span className="text-sm font-medium">{p.telefono || 'Sin Teléfono'}</span>
                                 </div>
-                                {p.direccion && (
-                                    <div className="flex items-center gap-3 text-slate-500">
-                                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                                {(p.provincia || p.departamento || p.direccion) && (
+                                    <div className="flex items-start gap-3 text-slate-500">
+                                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
                                             <MapPin size={14} />
                                         </div>
-                                        <span className="text-xs italic truncate">{p.direccion}</span>
+                                        <div className="text-xs flex-1">
+                                            {p.provincia && (
+                                                <div className="font-bold text-slate-400">{p.provincia}</div>
+                                            )}
+                                            {p.departamento && (
+                                                <div className="italic text-slate-500">{p.departamento}</div>
+                                            )}
+                                            {p.direccion && (
+                                                <div className="mt-1 text-slate-500">{p.direccion}</div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

@@ -5,6 +5,8 @@ export interface Proveedor {
     tipo?: string;
     telefono?: string;
     email?: string;
+    provincia?: string;
+    departamento?: string;
     direccion?: string;
     activo: boolean;
     createdAt: string;
