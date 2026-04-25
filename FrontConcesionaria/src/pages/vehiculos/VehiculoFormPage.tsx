@@ -21,13 +21,13 @@ const VehiculoFormPage = () => {
     useEffect(() => {
         // Cargar sucursales para el select
         sucursalesApi.getAll().then(res => {
-            setSucursales(res.data.map((s: any) => ({ value: s.id, label: s.nombre })));
+            const list = Array.isArray(res) ? res : ((res as { results?: { id: number; nombre: string }[] })?.results ?? []);
+            setSucursales(list.map((s: { id: number; nombre: string }) => ({ value: s.id, label: s.nombre })));
         });
 
         if (isEdit) {
-            vehiculosApi.getById(Number(id)).then(res => {
+            vehiculosApi.getById(Number(id)).then(data => {
                 // Formatear fechas para el input type="date"
-                const data = res.data;
                 if (data.fechaIngreso) data.fechaIngreso = data.fechaIngreso.split('T')[0];
                 if (data.fechaCompra) data.fechaCompra = data.fechaCompra.split('T')[0];
                 reset(data);

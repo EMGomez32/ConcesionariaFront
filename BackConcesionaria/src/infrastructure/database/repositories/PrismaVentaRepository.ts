@@ -70,6 +70,45 @@ export class PrismaVentaRepository implements IVentaRepository {
         await prisma.venta.delete({ where: { id } });
     }
 
+    // Pagos
+    async listPagos(ventaId: number): Promise<any[]> {
+        return prisma.ventaPago.findMany({ where: { ventaId }, orderBy: { fecha: 'desc' } });
+    }
+
+    async addPago(ventaId: number, data: any): Promise<any> {
+        return prisma.ventaPago.create({ data: { ...data, ventaId } });
+    }
+
+    async removePago(pagoId: number): Promise<void> {
+        await prisma.ventaPago.delete({ where: { id: pagoId } });
+    }
+
+    // Extras
+    async listExtras(ventaId: number): Promise<any[]> {
+        return prisma.ventaExtra.findMany({ where: { ventaId } });
+    }
+
+    async addExtra(ventaId: number, data: any): Promise<any> {
+        return prisma.ventaExtra.create({ data: { ...data, ventaId } });
+    }
+
+    async removeExtra(extraId: number): Promise<void> {
+        await prisma.ventaExtra.delete({ where: { id: extraId } });
+    }
+
+    // Canjes
+    async listCanjes(ventaId: number): Promise<any[]> {
+        return prisma.ventaCanjeVehiculo.findMany({ where: { ventaId } });
+    }
+
+    async addCanje(ventaId: number, data: any): Promise<any> {
+        return prisma.ventaCanjeVehiculo.create({ data: { ...data, ventaId } });
+    }
+
+    async removeCanje(canjeId: number): Promise<void> {
+        await prisma.ventaCanjeVehiculo.delete({ where: { id: canjeId } });
+    }
+
     private mapToEntity(v: any): Venta {
         return new Venta(
             v.id,
@@ -78,16 +117,23 @@ export class PrismaVentaRepository implements IVentaRepository {
             v.vehiculoId,
             v.clienteId,
             v.vendedorId,
-            v.nroVenta,
-            v.fecha,
+            v.fechaVenta,
             Number(v.precioVenta),
-            v.estado,
+            v.moneda,
+            v.formaPago,
+            v.estadoEntrega,
+            v.fechaEntrega,
+            v.observaciones ?? null,
+            v.presupuestoId ?? null,
             v.createdAt,
             v.updatedAt,
             v.deletedAt,
             v.cliente,
             v.vehiculo,
-            v.vendedor
+            v.vendedor,
+            v.extras,
+            v.pagos,
+            v.canjes
         );
     }
 }

@@ -38,9 +38,8 @@ const UsuariosPage: React.FC = () => {
         queryKey: ['usuarios', searchTerm],
         queryFn: async () => {
             const filters = searchTerm ? { nombre: searchTerm } : {};
-            const res = await usuariosApi.getAll(filters);
-            const data = res.data?.data ?? res.data ?? res;
-            return data || { results: [], total: 0, page: 1, limit: 10 };
+            const res = await usuariosApi.getAll(filters) as { results?: Usuario[]; total?: number; page?: number; limit?: number };
+            return res || { results: [], total: 0, page: 1, limit: 10 };
         }
     });
 

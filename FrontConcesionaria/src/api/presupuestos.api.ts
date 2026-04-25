@@ -1,7 +1,7 @@
 import client from './client';
 import type { PaginationOptions } from '../types/vehiculo.types';
 import type { Presupuesto } from '../types/presupuesto.types';
-import type { ApiResponse, PaginatedResponse } from '../types/api.types';
+import type { PaginatedResponse } from '../types/api.types';
 
 export interface CreatePresupuestoDto {
     nroPresupuesto: string;
@@ -26,24 +26,24 @@ export interface CreatePresupuestoDto {
 
 export const presupuestosApi = {
     getAll: (filters: any = {}, options: PaginationOptions = {}) => {
-        return client.get<ApiResponse<PaginatedResponse<Presupuesto>>>('/presupuestos', {
+        return client.get<PaginatedResponse<Presupuesto>>('/presupuestos', {
             params: { ...filters, ...options },
         });
     },
 
     getById: (id: number) => {
-        return client.get<ApiResponse<Presupuesto>>(`/presupuestos/${id}`);
+        return client.get<Presupuesto>(`/presupuestos/${id}`);
     },
 
     create: (data: CreatePresupuestoDto) => {
-        return client.post<ApiResponse<Presupuesto>>('/presupuestos', data);
+        return client.post<Presupuesto>('/presupuestos', data);
     },
 
     update: (id: number, data: { estado?: string; observaciones?: string }) => {
-        return client.patch<ApiResponse<Presupuesto>>(`/presupuestos/${id}`, data);
+        return client.patch<Presupuesto>(`/presupuestos/${id}`, data);
     },
 
     delete: (id: number) => {
-        return client.delete<ApiResponse<void>>(`/presupuestos/${id}`);
+        return client.delete<void>(`/presupuestos/${id}`);
     },
 };

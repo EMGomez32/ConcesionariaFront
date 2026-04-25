@@ -38,8 +38,8 @@ const SucursalForm: React.FC<SucursalFormProps> = ({ onSubmit, initialData, onCa
             const loadConcesionarias = async () => {
                 try {
                     const res = await concesionariasApi.getAll();
-                    const concData = res.data?.data ?? res.data ?? res;
-                    setConcesionarias(concData.results || concData || []);
+                    const r = res as { results?: Concesionaria[] } | Concesionaria[];
+                    setConcesionarias(Array.isArray(r) ? r : (r?.results ?? []));
                 } catch (error) {
                     console.error('Error al cargar concesionarias:', error);
                 }

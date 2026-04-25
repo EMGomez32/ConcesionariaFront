@@ -109,7 +109,7 @@ const DashboardPage = () => {
             <div className="activity-timeline">
               {auditsLoading ? (
                 <p className="text-center p-4">Cargando actividad...</p>
-              ) : auditsData?.results?.map((audit: any) => (
+              ) : (auditsData as { results?: any[] })?.results?.map((audit: any) => (
                 <div key={audit.id} className="timeline-item">
                   <div className="timeline-dot-wrapper">
                     <div className="timeline-dot"></div>

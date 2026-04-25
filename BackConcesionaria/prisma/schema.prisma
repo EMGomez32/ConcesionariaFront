@@ -226,15 +226,20 @@ model Vehiculo {
 }
 
 model VehiculoArchivo {
-  id          Int       @id @default(autoincrement())
-  vehiculoId  Int       @map("vehiculo_id")
-  tipo        String?
-  url         String
-  descripcion String?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-  vehiculo    Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  id           Int       @id @default(autoincrement())
+  vehiculoId   Int       @map("vehiculo_id")
+  tipo         String?
+  url          String
+  descripcion  String?
+  originalName String?   @map("original_name")
+  mimeType     String?   @map("mime_type")
+  sizeBytes    Int?      @map("size_bytes")
+  storageKey   String?   @map("storage_key")
+  uploadedById Int?      @map("uploaded_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  vehiculo     Vehiculo  @relation(fields: [vehiculoId], references: [id])
 
   @@index([vehiculoId])
   @@map("vehiculo_archivos")
@@ -719,14 +724,19 @@ model SolicitudFinanciacion {
 }
 
 model SolicitudFinanciacionArchivo {
-  id          Int                   @id @default(autoincrement())
-  solicitudId Int                   @map("solicitud_id")
-  tipo        String?
-  url         String
-  descripcion String?
-  createdAt   DateTime              @default(now()) @map("created_at")
-  deletedAt   DateTime?             @map("deleted_at")
-  solicitud   SolicitudFinanciacion @relation(fields: [solicitudId], references: [id])
+  id           Int                   @id @default(autoincrement())
+  solicitudId  Int                   @map("solicitud_id")
+  tipo         String?
+  url          String
+  descripcion  String?
+  originalName String?               @map("original_name")
+  mimeType     String?               @map("mime_type")
+  sizeBytes    Int?                  @map("size_bytes")
+  storageKey   String?               @map("storage_key")
+  uploadedById Int?                  @map("uploaded_by_id")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  deletedAt   DateTime?              @map("deleted_at")
+  solicitud    SolicitudFinanciacion @relation(fields: [solicitudId], references: [id])
 
   @@index([solicitudId])
   @@map("solicitud_financiacion_archivos")

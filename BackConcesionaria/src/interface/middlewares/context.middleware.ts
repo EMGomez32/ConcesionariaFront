@@ -27,7 +27,12 @@ export const contextMiddleware = (req: Request, res: Response, next: NextFunctio
 
     const correlationId = (req.headers['x-correlation-id'] as string) || Math.random().toString(36).substring(7);
 
-    context.run({ user, correlationId }, () => {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+        || req.socket?.remoteAddress
+        || req.ip;
+    const userAgent = req.headers['user-agent'];
+
+    context.run({ user, correlationId, ip, userAgent }, () => {
         next();
     });
 };

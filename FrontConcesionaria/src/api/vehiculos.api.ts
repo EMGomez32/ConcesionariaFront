@@ -1,32 +1,32 @@
 import client from './client';
 import type { Vehiculo, VehiculoFilter, PaginationOptions, EstadoVehiculo } from '../types/vehiculo.types';
-import type { ApiResponse, PaginatedResponse } from '../types/api.types';
+import type { PaginatedResponse } from '../types/api.types';
 
 export const vehiculosApi = {
     getAll: (filters: VehiculoFilter = {}, options: PaginationOptions = {}) => {
-        return client.get<ApiResponse<PaginatedResponse<Vehiculo>>>('/vehiculos', {
+        return client.get<PaginatedResponse<Vehiculo>>('/vehiculos', {
             params: { ...filters, ...options },
         });
     },
 
     getById: (id: number) => {
-        return client.get<ApiResponse<Vehiculo>>(`/vehiculos/${id}`);
+        return client.get<Vehiculo>(`/vehiculos/${id}`);
     },
 
     create: (data: Partial<Vehiculo>) => {
-        return client.post<ApiResponse<Vehiculo>>('/vehiculos', data);
+        return client.post<Vehiculo>('/vehiculos', data);
     },
 
     update: (id: number, data: Partial<Vehiculo>) => {
-        return client.patch<ApiResponse<Vehiculo>>(`/vehiculos/${id}`, data);
+        return client.patch<Vehiculo>(`/vehiculos/${id}`, data);
     },
 
     changeEstado: (id: number, estado: EstadoVehiculo) => {
-        return client.patch<ApiResponse<Vehiculo>>(`/vehiculos/${id}`, { estado });
+        return client.patch<Vehiculo>(`/vehiculos/${id}`, { estado });
     },
 
     transferir: (vehiculoId: number, sucursalDestinoId: number, motivo?: string) => {
-        return client.post<ApiResponse<any>>('/vehiculo-movimientos', {
+        return client.post<unknown>('/vehiculo-movimientos', {
             vehiculoId,
             tipo: 'traslado',
             sucursalDestinoId,
@@ -36,6 +36,6 @@ export const vehiculosApi = {
     },
 
     delete: (id: number) => {
-        return client.delete<ApiResponse<void>>(`/vehiculos/${id}`);
+        return client.delete<void>(`/vehiculos/${id}`);
     },
 };

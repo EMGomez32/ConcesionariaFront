@@ -6,6 +6,7 @@ import { CreateUsuario } from '../../application/use-cases/usuarios/CreateUsuari
 import { UpdateUsuario } from '../../application/use-cases/usuarios/UpdateUsuario';
 import { DeleteUsuario } from '../../application/use-cases/usuarios/DeleteUsuario';
 import { cleanFilters } from '../../utils/cleanFilters';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaUsuarioRepository();
 const getUsuariosUC = new GetUsuarios(repository);
@@ -38,6 +39,12 @@ export class UsuarioController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createUsuarioUC.execute(req.body);
+            await audit({
+                entidad: 'Usuario',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Usuario ${(result as any)?.nombre ?? (result as any)?.email ?? (result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -48,6 +55,12 @@ export class UsuarioController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updateUsuarioUC.execute(id, req.body);
+            await audit({
+                entidad: 'Usuario',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Usuario ${(result as any)?.nombre ?? (result as any)?.email ?? id} actualizado`,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -58,6 +71,12 @@ export class UsuarioController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteUsuarioUC.execute(id);
+            await audit({
+                entidad: 'Usuario',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `Usuario ${id} eliminado`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

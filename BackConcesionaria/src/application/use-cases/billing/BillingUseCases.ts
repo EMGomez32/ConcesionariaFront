@@ -1,5 +1,6 @@
 import { IBillingRepository } from '../../../domain/repositories/IBillingRepository';
 import { NotFoundException } from '../../../domain/exceptions/BaseException';
+import { assertValidTransition } from '../../../domain/services/stateMachine';
 
 // Planes
 export class GetPlanes {
@@ -32,6 +33,12 @@ export class GetSubscriptionByConcesionariaId {
 export class CreateOrUpdateSubscription {
     constructor(private readonly repository: IBillingRepository) { }
     async execute(concesionariaId: number, data: any) {
+        if (data.status) {
+            const current: any = await this.repository.findSubscriptionByConcesionariaId(concesionariaId);
+            if (current && current.status && current.status !== data.status) {
+                assertValidTransition('suscripcion', current.status, data.status);
+            }
+        }
         return this.repository.upsertSubscription(concesionariaId, data);
     }
 }

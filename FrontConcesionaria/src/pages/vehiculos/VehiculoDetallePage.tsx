@@ -19,7 +19,7 @@ import {
     Plus, Trash2, ExternalLink, Upload, X, Image, FileText as FileIcon, Edit
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ApiResponse, PaginatedResponse, ApiError } from '../../types/api.types';
+import type { PaginatedResponse, ApiError } from '../../types/api.types';
 
 type Tab = 'info' | 'archivos' | 'gastos' | 'movimientos' | 'presupuestos' | 'reservas' | 'ventas';
 
@@ -92,8 +92,7 @@ const VehiculoDetallePage = () => {
         setLoading(true);
         vehiculosApi.getById(Number(id))
             .then(res => {
-                const response = res.data as ApiResponse<VehiculoFull>;
-                setVehiculo(response.data);
+                setVehiculo(res as VehiculoFull);
             })
             .catch(() => setError('No se pudo cargar el vehículo.'))
             .finally(() => setLoading(false));
@@ -104,8 +103,7 @@ const VehiculoDetallePage = () => {
         setLoadingArchivos(true);
         try {
             const res = await vehiculoArchivosApi.getByVehiculo(Number(id));
-            const response = res.data as unknown as ApiResponse<VehiculoArchivo[]>;
-            setArchivos(response.data || []);
+            setArchivos((res as VehiculoArchivo[]) || []);
         } catch {
             addToast('Error al cargar archivos', 'error');
         } finally {
@@ -121,9 +119,8 @@ const VehiculoDetallePage = () => {
         if (!id) return;
         setLoadingMov(true);
         try {
-            const res = await vehiculoMovimientosApi.getAll({ vehiculoId: Number(id) });
-            const response = res.data as unknown as ApiResponse<PaginatedResponse<VehiculoMovimiento>>;
-            setMovList(response.data?.results || []);
+            const res = await vehiculoMovimientosApi.getAll({ vehiculoId: Number(id) }) as PaginatedResponse<VehiculoMovimiento>;
+            setMovList(res?.results || []);
         } catch {
             addToast('Error al cargar movimientos', 'error');
         } finally {
@@ -140,8 +137,7 @@ const VehiculoDetallePage = () => {
         setLoadingGastos(true);
         try {
             const res = await gastosApi.getAll({ vehiculoId: Number(id), tipo: 'VEHICULO' });
-            const response = res.data as ApiResponse<PaginatedResponse<GastoVehiculo>>;
-            setGastosList(response.data?.results || []);
+            setGastosList(res?.results || []);
         } catch {
             addToast('Error al cargar gastos', 'error');
         } finally {
@@ -153,13 +149,12 @@ const VehiculoDetallePage = () => {
         if (activeTab === 'gastos') {
             loadGastos();
             gastosCategoriaApi.getAll().then(res => {
-                const response = res.data as ApiResponse<PaginatedResponse<GastoCategoria> | GastoCategoria[]>;
-                const d = response.data;
-                setGastosCat(Array.isArray(d) ? d : (d?.results ?? []));
+                if (Array.isArray(res)) setGastosCat(res);
+                else setGastosCat(res?.results ?? []);
             }).catch(() => { });
             sucursalesApi.getAll().then(res => {
-                const response = res.data as ApiResponse<PaginatedResponse<Sucursal>>;
-                setGastosSucursales(response.data?.results || []);
+                if (Array.isArray(res)) setGastosSucursales(res as Sucursal[]);
+                else setGastosSucursales((res as { results?: Sucursal[] })?.results || []);
             }).catch(() => { });
         }
     }, [activeTab, loadGastos]);

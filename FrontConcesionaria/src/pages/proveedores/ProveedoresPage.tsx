@@ -54,7 +54,7 @@ const ProveedoresPage: React.FC = () => {
             if (filterTipo) filters.tipo = filterTipo;
             if (filterActivo !== '') filters.activo = filterActivo === 'true';
             const res = await proveedoresApi.getAll(filters);
-            return res.data?.data ?? res.data;
+            return res;
         }
     });
 

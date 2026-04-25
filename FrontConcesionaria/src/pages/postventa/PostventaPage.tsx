@@ -97,10 +97,10 @@ export default function PostventaPage() {
             const params: Record<string, unknown> = { page, limit: 20 };
             if (filterEstado) params.estado = filterEstado;
             if (filterSucursal) params.sucursalId = filterSucursal;
-            const res = await postventaApi.getCasos(params);
-            const raw = res.data?.data?.results ?? res.data?.data ?? [];
+            const res = await postventaApi.getCasos(params) as { results?: PostventaCaso[]; totalPages?: number };
+            const raw = res?.results ?? [];
             setCasos(Array.isArray(raw) ? raw : []);
-            setTotalPages(res.data?.data?.totalPages ?? 1);
+            setTotalPages(res?.totalPages ?? 1);
         } catch {
             addToast('Error al cargar casos', 'error');
         } finally {
@@ -114,19 +114,20 @@ export default function PostventaPage() {
                 const [clRes, vhRes, vtRes, suRes, prRes] = await Promise.all([
                     clientesApi.getAll({}, { limit: 200 }),
                     vehiculosApi.getAll({}, { limit: 200 }),
-                    ventasApi.getAll({ limit: 200 }),
+                    ventasApi.getAll({}, { limit: 200 }),
                     sucursalesApi.getAll({}, { limit: 200 }),
-                    proveedoresApi.getAll({ activo: true }),
+                    proveedoresApi.getAll({ activo: true } as Record<string, unknown>),
                 ]);
-                const raw = (r: unknown) => {
-                    const d = (r as any)?.data?.data;
-                    return Array.isArray(d?.results) ? d.results : Array.isArray(d) ? d : [];
+                const raw = (r: unknown): unknown[] => {
+                    const d = r as { results?: unknown[] } | unknown[];
+                    if (Array.isArray(d)) return d;
+                    return Array.isArray(d?.results) ? d.results : [];
                 };
-                setClientes(raw(clRes));
-                setVehiculos(raw(vhRes));
-                setVentas(raw(vtRes));
-                setSucursales(raw(suRes));
-                setProveedores(raw(prRes));
+                setClientes(raw(clRes) as { id: number; nombre: string }[]);
+                setVehiculos(raw(vhRes) as { id: number; marca: string; modelo: string; dominio?: string }[]);
+                setVentas(raw(vtRes) as { id: number; montoTotal?: number; cliente?: { nombre: string }; vehiculo?: { marca: string; modelo: string } }[]);
+                setSucursales(raw(suRes) as { id: number; nombre: string }[]);
+                setProveedores(raw(prRes) as { id: number; nombre: string }[]);
             } catch {
                 // silent
             }
@@ -183,7 +184,7 @@ export default function PostventaPage() {
             // refresh detail if open
             if (detailCaso?.id === transicionCaso.id) {
                 const res = await postventaApi.getCasoById(transicionCaso.id);
-                setDetailCaso(res.data?.data ?? res.data);
+                setDetailCaso(res as PostventaCaso);
             }
             loadCasos();
         } catch {
@@ -232,7 +233,7 @@ export default function PostventaPage() {
             // Refresh detail
             if (detailCaso) {
                 const res = await postventaApi.getCasoById(detailCaso.id);
-                setDetailCaso(res.data?.data ?? res.data);
+                setDetailCaso(res as PostventaCaso);
             }
         } catch {
             addToast('Error al registrar ítem', 'error');
@@ -249,7 +250,7 @@ export default function PostventaPage() {
             setDeletingItem(null);
             if (detailCaso) {
                 const res = await postventaApi.getCasoById(detailCaso.id);
-                setDetailCaso(res.data?.data ?? res.data);
+                setDetailCaso(res as PostventaCaso);
             }
         } catch {
             addToast('Error al eliminar ítem', 'error');
@@ -262,7 +263,7 @@ export default function PostventaPage() {
     const handleViewDetail = async (caso: PostventaCaso) => {
         try {
             const res = await postventaApi.getCasoById(caso.id);
-            setDetailCaso(res.data?.data ?? res.data);
+            setDetailCaso(res as PostventaCaso);
         } catch {
             setDetailCaso(caso);
         }

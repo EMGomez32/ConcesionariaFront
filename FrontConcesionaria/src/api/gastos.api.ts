@@ -1,5 +1,5 @@
 import client from './client';
-import type { ApiResponse, PaginatedResponse } from '../types/api.types';
+import type { PaginatedResponse } from '../types/api.types';
 
 export type TipoGasto = 'VEHICULO' | 'FIJO';
 export type MonedaGasto = 'ARS' | 'USD';
@@ -37,14 +37,14 @@ export interface GastoFilter {
 
 export const gastosApi = {
     getAll: (filters: GastoFilter = {}) =>
-        client.get<ApiResponse<PaginatedResponse<GastoVehiculo>>>('/gastos', { params: filters }),
+        client.get<PaginatedResponse<GastoVehiculo>>('/gastos', { params: filters }),
 
     create: (data: Omit<GastoVehiculo, 'id' | 'createdAt' | 'updatedAt' | 'categoria' | 'vehiculo' | 'proveedor' | 'concesionariaId'>) =>
-        client.post<ApiResponse<GastoVehiculo>>('/gastos', data),
+        client.post<GastoVehiculo>('/gastos', data),
 
     update: (id: number, data: { monto?: number; descripcion?: string; fechaGasto?: string }) =>
-        client.patch<ApiResponse<GastoVehiculo>>(`/gastos/${id}`, data),
+        client.patch<GastoVehiculo>(`/gastos/${id}`, data),
 
     delete: (id: number) =>
-        client.delete<ApiResponse<void>>(`/gastos/${id}`),
+        client.delete<void>(`/gastos/${id}`),
 };

@@ -15,14 +15,7 @@ export const useConcesionarias = (filters: ConcesionariaFilter = {}, options: Pa
         queryKey: concesionariasKeys.list(filters, options),
         queryFn: async () => {
             const res = await concesionariasApi.getAll(filters, options);
-            const r = res as any;
-            return {
-                results: r?.data ?? [],
-                page: r?.meta?.page ?? 1,
-                limit: r?.meta?.limit ?? 10,
-                totalPages: r?.meta?.totalPages ?? 0,
-                totalResults: r?.meta?.totalResults ?? 0,
-            };
+            return res as PaginatedResponse<Concesionaria>;
         },
         staleTime: 30000, // Consider data fresh for 30 seconds
         refetchOnMount: true,

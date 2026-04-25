@@ -12,7 +12,7 @@ export const usePostventaCasos = (filters: any = {}) => {
         queryKey: [...postventaKeys.casos(), filters],
         queryFn: async () => {
             const res = await postventaApi.getCasos(filters);
-            return res as any;
+            return res;
         },
     });
 };
@@ -22,7 +22,7 @@ export const usePostventaCaso = (id: number) => {
         queryKey: postventaKeys.caso(id),
         queryFn: async () => {
             const res = await postventaApi.getCasoById(id);
-            return res as any;
+            return res;
         },
         enabled: !!id,
     });

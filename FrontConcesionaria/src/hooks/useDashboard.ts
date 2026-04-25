@@ -21,10 +21,10 @@ export const useDashboardStats = () => {
             ]);
 
             return {
-                vehiculos: vehiculos.data?.data?.totalResults ?? 0,
-                ventas: ventas.data?.data?.totalResults ?? 0,
-                clientes: clientes.data?.data?.totalResults ?? 0,
-                reservas: reservas.data?.data?.totalResults ?? 0,
+                vehiculos: vehiculos.totalResults ?? 0,
+                ventas: ventas.totalResults ?? 0,
+                clientes: clientes.totalResults ?? 0,
+                reservas: (reservas as { totalResults?: number })?.totalResults ?? 0,
             };
         },
         staleTime: 1000 * 60 * 2, // 2 minutes

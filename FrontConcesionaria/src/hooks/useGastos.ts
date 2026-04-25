@@ -13,7 +13,7 @@ export const useGastos = (filters: GastoFilter) => {
         queryKey: GASTOS_KEYS.list(filters),
         queryFn: async () => {
             const res = await gastosApi.getAll(filters);
-            return res.data.data;
+            return res;
         },
     });
 };
@@ -23,9 +23,8 @@ export const useGastosCategorias = () => {
         queryKey: GASTOS_KEYS.categorias,
         queryFn: async () => {
             const res = await gastosCategoriaApi.getAll();
-            const data = res.data.data;
-            if (Array.isArray(data)) return data;
-            return (data as { results?: unknown[] }).results || [];
+            if (Array.isArray(res)) return res;
+            return res.results ?? [];
         },
     });
 };

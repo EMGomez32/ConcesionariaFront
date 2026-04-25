@@ -61,6 +61,23 @@ export const updateSucursal = async (id: number, data: Prisma.SucursalUpdateInpu
 
 export const deleteSucursal = async (id: number) => {
     await getSucursalById(id);
+
+    const [vehiculos, ventas, presupuestos] = await Promise.all([
+        prisma.vehiculo.count({ where: { sucursalId: id, deletedAt: null } }),
+        prisma.venta.count({ where: { sucursalId: id, deletedAt: null } }),
+        prisma.presupuesto.count({ where: { sucursalId: id, deletedAt: null } }),
+    ]);
+
+    if (vehiculos > 0) {
+        throw new ApiError(400, 'No se puede eliminar la sucursal porque tiene vehículos activos', 'HAS_RELATIONS');
+    }
+    if (ventas > 0) {
+        throw new ApiError(400, 'No se puede eliminar la sucursal porque tiene ventas activas', 'HAS_RELATIONS');
+    }
+    if (presupuestos > 0) {
+        throw new ApiError(400, 'No se puede eliminar la sucursal porque tiene presupuestos activos', 'HAS_RELATIONS');
+    }
+
     return prisma.sucursal.delete({
         where: { id },
     });

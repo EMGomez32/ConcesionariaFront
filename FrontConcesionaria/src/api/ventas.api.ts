@@ -1,7 +1,7 @@
 import client from './client';
 import type { Venta } from '../types/venta.types';
 import type { PaginationOptions } from '../types/vehiculo.types';
-import type { ApiResponse, PaginatedResponse } from '../types/api.types';
+import type { PaginatedResponse } from '../types/api.types';
 
 export interface CreateVentaDto {
     sucursalId: number;
@@ -33,24 +33,24 @@ export interface VentaFilters {
 
 export const ventasApi = {
     getAll: (filters: VentaFilters = {}, options: PaginationOptions = {}) => {
-        return client.get<ApiResponse<PaginatedResponse<Venta>>>('/ventas', {
+        return client.get<PaginatedResponse<Venta>>('/ventas', {
             params: { ...filters, ...options },
         });
     },
 
     getById: (id: number) => {
-        return client.get<ApiResponse<Venta>>(`/ventas/${id}`);
+        return client.get<Venta>(`/ventas/${id}`);
     },
 
     create: (data: CreateVentaDto) => {
-        return client.post<ApiResponse<Venta>>('/ventas', data);
+        return client.post<Venta>('/ventas', data);
     },
 
     update: (id: number, data: { estadoEntrega?: string; observaciones?: string }) => {
-        return client.patch<ApiResponse<Venta>>(`/ventas/${id}`, data);
+        return client.patch<Venta>(`/ventas/${id}`, data);
     },
 
     delete: (id: number) => {
-        return client.delete<ApiResponse<void>>(`/ventas/${id}`);
+        return client.delete<void>(`/ventas/${id}`);
     },
 };

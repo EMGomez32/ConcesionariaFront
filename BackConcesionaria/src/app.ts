@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
 import { rateLimit } from 'express-rate-limit';
 import { env } from './config/env';
 import { contextMiddleware } from './interface/middlewares/context.middleware';
@@ -64,6 +65,10 @@ app.get('/health', async (_req, res) => {
         res.status(503).json({ status: 'unhealthy', error: 'Database unavailable' });
     }
 });
+
+// Archivos subidos (servidos como estáticos)
+const uploadsDir = process.env.UPLOADS_DIR || path.resolve(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', etag: true }));
 
 // Rutas de la API
 app.use('/api', routes);

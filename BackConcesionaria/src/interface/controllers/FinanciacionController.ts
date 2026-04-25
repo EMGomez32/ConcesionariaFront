@@ -3,12 +3,15 @@ import { PrismaFinanciacionRepository } from '../../infrastructure/database/repo
 import { GetFinanciaciones } from '../../application/use-cases/financiaciones/GetFinanciaciones';
 import { GetFinanciacionById } from '../../application/use-cases/financiaciones/GetFinanciacionById';
 import { CreateFinanciacion } from '../../application/use-cases/financiaciones/CreateFinanciacion';
+import { UpdateFinanciacion } from '../../application/use-cases/financiaciones/UpdateFinanciacion';
 import { RegistrarPagoCuota } from '../../application/use-cases/financiaciones/RegistrarPagoCuota';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaFinanciacionRepository();
 const getFinanciacionesUC = new GetFinanciaciones(repository);
 const getFinanciacionByIdUC = new GetFinanciacionById(repository);
 const createFinanciacionUC = new CreateFinanciacion(repository);
+const updateFinanciacionUC = new UpdateFinanciacion(repository);
 const registrarPagoUC = new RegistrarPagoCuota(repository);
 
 export class FinanciacionController {
@@ -35,7 +38,29 @@ export class FinanciacionController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createFinanciacionUC.execute(req.body);
+            await audit({
+                entidad: 'Financiacion',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Financiacion ${(result as any)?.id} creada`,
+            });
             res.status(201).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async update(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const result = await updateFinanciacionUC.execute(id, req.body);
+            await audit({
+                entidad: 'Financiacion',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Financiacion ${id} actualizada`,
+            });
+            res.json(result);
         } catch (error) {
             next(error);
         }
@@ -45,6 +70,12 @@ export class FinanciacionController {
         try {
             const cuotaId = parseInt(req.params.cuotaId as string, 10);
             const result = await registrarPagoUC.execute(cuotaId, req.body);
+            await audit({
+                entidad: 'Financiacion',
+                accion: 'update',
+                entidadId: (result as any)?.financiacionId ?? (result as any)?.id ?? cuotaId,
+                detalle: `Pago de cuota ${cuotaId} registrado`,
+            });
             res.json(result);
         } catch (error) {
             next(error);

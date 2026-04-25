@@ -13,7 +13,7 @@ export const useVentas = (filters: VentaFilters = {}, options: PaginationOptions
         queryKey: VENTAS_KEYS.list(filters, options),
         queryFn: async () => {
             const res = await ventasApi.getAll(filters, options);
-            return res.data.data;
+            return res;
         },
     });
 };
@@ -23,7 +23,7 @@ export const useVenta = (id: number | null) => {
         queryKey: VENTAS_KEYS.detail(id!),
         queryFn: async () => {
             const res = await ventasApi.getById(id!);
-            return res.data.data;
+            return res;
         },
         enabled: !!id,
     });

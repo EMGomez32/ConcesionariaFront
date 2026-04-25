@@ -50,7 +50,12 @@ async function main() {
     console.log('Plan Free creado.');
 
     // 3. Concesionaria Demo
-    const concesionaria = await prisma.concesionaria.create({
+    const existingDemo = await prisma.concesionaria.findFirst({
+        where: { nombre: 'Concesionaria Demo' },
+        include: { sucursales: true },
+    });
+
+    const concesionaria = existingDemo ?? await prisma.concesionaria.create({
         data: {
             nombre: 'Concesionaria Demo',
             cuit: '20-12345678-9',
@@ -72,18 +77,20 @@ async function main() {
             sucursales: true,
         },
     });
-    console.log('Concesionaria Demo creada.');
+    console.log(existingDemo ? 'Concesionaria Demo ya existía.' : 'Concesionaria Demo creada.');
 
     // 4. Usuario Admin para la Demo
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedAdminPassword = await bcrypt.hash('admin123', 10);
     const adminRole = await prisma.rol.findUnique({ where: { nombre: 'admin' } });
 
     if (adminRole) {
-        await prisma.usuario.create({
-            data: {
+        await prisma.usuario.upsert({
+            where: { concesionariaId_email: { concesionariaId: concesionaria.id, email: 'admin@demo.com' } },
+            update: {},
+            create: {
                 nombre: 'Admin Demo',
                 email: 'admin@demo.com',
-                passwordHash: hashedPassword,
+                passwordHash: hashedAdminPassword,
                 concesionariaId: concesionaria.id,
                 sucursalId: concesionaria.sucursales[0].id,
                 roles: {
@@ -94,6 +101,29 @@ async function main() {
             },
         });
         console.log('Usuario Admin creado (user: admin@demo.com, pass: admin123).');
+    }
+
+    // 5. Usuario Super Admin (sin tenant — acceso a toda la plataforma)
+    const hashedSuperPassword = await bcrypt.hash('super123', 10);
+    const superAdminRole = await prisma.rol.findUnique({ where: { nombre: 'super_admin' } });
+
+    if (superAdminRole) {
+        await prisma.usuario.upsert({
+            where: { concesionariaId_email: { concesionariaId: concesionaria.id, email: 'superadmin@demo.com' } },
+            update: {},
+            create: {
+                nombre: 'Super Admin',
+                email: 'superadmin@demo.com',
+                passwordHash: hashedSuperPassword,
+                concesionariaId: concesionaria.id,
+                roles: {
+                    create: {
+                        rolId: superAdminRole.id,
+                    },
+                },
+            },
+        });
+        console.log('Usuario Super Admin creado (user: superadmin@demo.com, pass: super123).');
     }
 
     console.log('Seed finalizado con éxito.');

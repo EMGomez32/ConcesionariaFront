@@ -4,6 +4,7 @@ import { GetCategoriasGasto } from '../../application/use-cases/gastos-categoria
 import { CreateCategoriaGasto } from '../../application/use-cases/gastos-categorias/CreateCategoriaGasto';
 import { DeleteCategoriaGasto } from '../../application/use-cases/gastos-categorias/DeleteCategoriaGasto';
 import { context } from '../../infrastructure/security/context';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaCategoriaGastoRepository();
 const getCategoriasUC = new GetCategoriasGasto(repository);
@@ -24,6 +25,12 @@ export class CategoriaGastoController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createCategoriaUC.execute(req.body);
+            await audit({
+                entidad: 'CategoriaGastoVehiculo',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `CategoriaGastoVehiculo ${(result as any)?.nombre ?? (result as any)?.id} creada`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -34,6 +41,12 @@ export class CategoriaGastoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteCategoriaUC.execute(id);
+            await audit({
+                entidad: 'CategoriaGastoVehiculo',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `CategoriaGastoVehiculo ${id} eliminada`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

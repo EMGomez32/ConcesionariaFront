@@ -24,7 +24,7 @@ import Modal from '../../components/ui/Modal';
 import DataTable, { type Column } from '../../components/ui/DataTable';
 import PageTitle from '../../components/ui/PageTitle';
 import { useConfirm } from '../../hooks/useConfirm';
-import type { ApiResponse, PaginatedResponse, ApiError } from '../../types/api.types';
+import type { PaginatedResponse, ApiError } from '../../types/api.types';
 
 const ClientesPage: React.FC = () => {
     const navigate = useNavigate();
@@ -54,7 +54,7 @@ const ClientesPage: React.FC = () => {
     const totalPages = response?.totalPages || 1;
 
     // Mutations
-    const createMutation = useMutation<ApiResponse<Cliente>, ApiError, Partial<Cliente>>({
+    const createMutation = useMutation<Cliente, ApiError, Partial<Cliente>>({
         mutationFn: async (data: Partial<Cliente>) => {
             const res = await clientesApi.create(data);
             return res;
@@ -69,7 +69,7 @@ const ClientesPage: React.FC = () => {
         }
     });
 
-    const updateMutation = useMutation<ApiResponse<Cliente>, ApiError, { id: number, data: Partial<Cliente> }>({
+    const updateMutation = useMutation<Cliente, ApiError, { id: number, data: Partial<Cliente> }>({
         mutationFn: async ({ id, data }: { id: number, data: Partial<Cliente> }) => {
             const res = await clientesApi.update(id, data);
             return res;
@@ -84,10 +84,9 @@ const ClientesPage: React.FC = () => {
         }
     });
 
-    const deleteMutation = useMutation<ApiResponse<void>, ApiError, number>({
+    const deleteMutation = useMutation<void, ApiError, number>({
         mutationFn: async (id: number) => {
-            const res = await clientesApi.delete(id);
-            return res;
+            await clientesApi.delete(id);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['clientes'] });

@@ -39,6 +39,15 @@ export class PrismaFinanciacionRepository implements IFinanciacionRepository {
         return f ? this.mapToEntity(f) : null;
     }
 
+    async update(id: number, data: any): Promise<Financiacion> {
+        const f = await prisma.financiacion.update({
+            where: { id },
+            data,
+            include: { cuotasPlan: true, venta: true },
+        });
+        return this.mapToEntity(f);
+    }
+
     async findCuotaById(id: number): Promise<Cuota | null> {
         const c = await prisma.cuota.findUnique({ where: { id } });
         return c ? this.mapCuotaToEntity(c) : null;

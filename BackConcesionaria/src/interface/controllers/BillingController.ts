@@ -8,6 +8,7 @@ import {
     RegistrarPagoInvoice
 } from '../../application/use-cases/billing/BillingUseCases';
 import { context } from '../../infrastructure/security/context';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaBillingRepository();
 const getPlanesUC = new GetPlanes(repository);
@@ -32,6 +33,12 @@ export class BillingController {
     static async createPlan(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createPlanUC.execute(req.body);
+            await audit({
+                entidad: 'Plan',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Plan ${(result as any)?.nombre ?? (result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) { next(error); }
     }
@@ -40,6 +47,12 @@ export class BillingController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updatePlanUC.execute(id, req.body);
+            await audit({
+                entidad: 'Plan',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Plan ${(result as any)?.nombre ?? id} actualizado`,
+            });
             res.json(result);
         } catch (error) { next(error); }
     }
@@ -65,6 +78,13 @@ export class BillingController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await createOrUpdateSubUC.execute(id, req.body);
+            await audit({
+                entidad: 'Suscripcion',
+                accion: 'update',
+                entidadId: (result as any)?.id ?? id,
+                detalle: `Suscripcion ${(result as any)?.id ?? id} actualizada`,
+                concesionariaId: id,
+            });
             res.json(result);
         } catch (error) { next(error); }
     }
@@ -81,6 +101,12 @@ export class BillingController {
     static async createInvoice(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createInvoiceUC.execute(req.body);
+            await audit({
+                entidad: 'Invoice',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Invoice ${(result as any)?.id} creada`,
+            });
             res.status(201).json(result);
         } catch (error) { next(error); }
     }
@@ -97,6 +123,12 @@ export class BillingController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await registrarPagoUC.execute(id, req.body);
+            await audit({
+                entidad: 'Payment',
+                accion: 'create',
+                entidadId: (result as any)?.id ?? id,
+                detalle: `Pago registrado para invoice ${id}`,
+            });
             res.json(result);
         } catch (error) { next(error); }
     }

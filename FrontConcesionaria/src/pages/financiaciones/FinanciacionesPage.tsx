@@ -114,9 +114,9 @@ const FinanciacionesPage = () => {
                 usuariosApi.getAll({}, { limit: 1000 }),
                 ventasApi.getAll({}, { limit: 1000 }),
             ]);
-            setClientes(c.data?.data?.results ?? c.data?.data ?? []);
-            setCobradores(u.data?.data?.results ?? u.data?.data ?? []);
-            setVentas(v.data?.data?.results ?? v.data?.data ?? []);
+            setClientes(c.results ?? []);
+            setCobradores((u as { results?: unknown[] }).results ?? []);
+            setVentas(v.results ?? []);
         } catch { /* silencioso */ }
     }, []);
 

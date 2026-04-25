@@ -17,7 +17,7 @@ export const usePlanes = (params?: any) => {
         queryKey: [...billingKeys.planes(), params],
         queryFn: async () => {
             const res = await billingApi.getPlanes(params);
-            return res as any;
+            return res;
         },
     });
 };
@@ -27,7 +27,7 @@ export const useSubscriptions = () => {
         queryKey: billingKeys.subscriptions(),
         queryFn: async () => {
             const res = await billingApi.getInvoices({ limit: 100 });
-            return res as any;
+            return res;
         },
     });
 };
@@ -47,7 +47,7 @@ export const useMySubscription = () => {
         queryKey: billingKeys.mySubscription(),
         queryFn: async () => {
             const res = await billingApi.getMySubscription();
-            return res as any;
+            return res;
         },
     });
 };
@@ -57,7 +57,7 @@ export const useInvoices = (filters: any = {}, options: PaginationOptions = {}) 
         queryKey: [...billingKeys.invoices(), { ...filters, ...options }],
         queryFn: async () => {
             const res = await billingApi.getInvoices({ ...filters, ...options });
-            return res as any;
+            return res;
         },
     });
 };

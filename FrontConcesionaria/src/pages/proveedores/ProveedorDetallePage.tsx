@@ -36,8 +36,11 @@ const ProveedorDetallePage = () => {
             setLoading(true);
             setError(null);
             try {
-                const res = await proveedoresApi.getById(Number(id));
-                const data = res.data ?? res;
+                const data = await proveedoresApi.getById(Number(id)) as Proveedor & {
+                    vehiculosCompra?: unknown[];
+                    gastosVehiculo?: unknown[];
+                    postventaItems?: unknown[];
+                };
                 setProveedor(data);
                 setVehiculos(data.vehiculosCompra ?? []);
                 setGastos(data.gastosVehiculo ?? []);

@@ -5,6 +5,7 @@ import { GetCasoById } from '../../application/use-cases/postventa-casos/GetCaso
 import { CreateCaso } from '../../application/use-cases/postventa-casos/CreateCaso';
 import { UpdateCaso } from '../../application/use-cases/postventa-casos/UpdateCaso';
 import { DeleteCaso } from '../../application/use-cases/postventa-casos/DeleteCaso';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaPostventaCasoRepository();
 const getCasosUC = new GetCasos(repository);
@@ -37,6 +38,12 @@ export class PostventaCasoController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createCasoUC.execute(req.body);
+            await audit({
+                entidad: 'PostventaCaso',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `PostventaCaso ${(result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -47,6 +54,12 @@ export class PostventaCasoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updateCasoUC.execute(id, req.body);
+            await audit({
+                entidad: 'PostventaCaso',
+                accion: 'update',
+                entidadId: id,
+                detalle: `PostventaCaso ${id} actualizado`,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -57,6 +70,12 @@ export class PostventaCasoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteCasoUC.execute(id);
+            await audit({
+                entidad: 'PostventaCaso',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `PostventaCaso ${id} eliminado`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

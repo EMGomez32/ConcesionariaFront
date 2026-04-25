@@ -8,4 +8,5 @@ export interface IProveedorRepository {
     update(id: number, data: Partial<Proveedor>): Promise<Proveedor>;
     delete(id: number): Promise<void>;
     countGastos(id: number): Promise<number>;
+    countPostventaItems(id: number): Promise<number>;
 }

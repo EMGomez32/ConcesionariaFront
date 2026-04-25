@@ -16,7 +16,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: ['lucide-react', 'react-helmet-async'],
-          utils: ['zod', 'axios', 'date-fns']
+          utils: ['axios']
         }
       }
     }

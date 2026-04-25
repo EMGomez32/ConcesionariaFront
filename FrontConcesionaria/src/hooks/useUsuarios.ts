@@ -14,7 +14,7 @@ export const useUsuarios = (filters: UsuarioFilter = {}, options: PaginationOpti
         queryKey: USUARIOS_KEYS.list(filters, options),
         queryFn: async () => {
             const res = await usuariosApi.getAll(filters, options);
-            return res as any;
+            return res as PaginatedResponse<Usuario>;
         },
     });
 };

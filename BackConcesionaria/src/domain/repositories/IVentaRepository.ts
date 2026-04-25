@@ -10,4 +10,19 @@ export interface IVentaRepository {
 
     // Custom methods for transactions
     createWithTransaction(data: any, tx: any): Promise<Venta>;
+
+    // Sub-resources: pagos
+    listPagos(ventaId: number): Promise<any[]>;
+    addPago(ventaId: number, data: any): Promise<any>;
+    removePago(pagoId: number): Promise<void>;
+
+    // Sub-resources: extras
+    listExtras(ventaId: number): Promise<any[]>;
+    addExtra(ventaId: number, data: any): Promise<any>;
+    removeExtra(extraId: number): Promise<void>;
+
+    // Sub-resources: canjes
+    listCanjes(ventaId: number): Promise<any[]>;
+    addCanje(ventaId: number, data: any): Promise<any>;
+    removeCanje(canjeId: number): Promise<void>;
 }

@@ -11,7 +11,8 @@ export class RegistrarPagoCuota {
             if (!cuota) throw new NotFoundException('Cuota');
 
             const saldoRestante = Number(cuota.saldoCuota) - Number(data.monto);
-            const nuevoEstado = saldoRestante <= 0 ? 'pagada' : 'parcial';
+            const cuotaSaldada = saldoRestante <= 0;
+            const nuevoEstado = cuotaSaldada ? 'pagada' : 'parcial';
 
             await tx.pagoCuota.create({
                 data: {
@@ -22,12 +23,17 @@ export class RegistrarPagoCuota {
                 }
             });
 
+            const updateData: any = {
+                estado: nuevoEstado as any,
+                saldoCuota: Math.max(0, saldoRestante),
+            };
+            if (cuotaSaldada && !cuota.fechaPagoCompleto) {
+                updateData.fechaPagoCompleto = new Date();
+            }
+
             return tx.cuota.update({
                 where: { id: cuotaId },
-                data: {
-                    estado: nuevoEstado as any,
-                    saldoCuota: Math.max(0, saldoRestante)
-                }
+                data: updateData,
             });
         });
     }

@@ -119,8 +119,8 @@ export default function FinanciacionExternaPage() {
     const loadFinancieras = useCallback(async () => {
         setLoadingFin(true);
         try {
-            const res = await financierasApi.getAll();
-            const raw = res.data?.data?.results ?? res.data?.data ?? [];
+            const res = await financierasApi.getAll() as { results?: Financiera[] } | Financiera[];
+            const raw = Array.isArray(res) ? res : res?.results ?? [];
             const arr: Financiera[] = Array.isArray(raw) ? raw : [];
             setFinancieras(arr);
             setFinancierasCatalog(arr.filter(f => f.activo));
@@ -140,10 +140,10 @@ export default function FinanciacionExternaPage() {
             const params: Record<string, unknown> = { page, limit: 20 };
             if (filterEstado) params.estado = filterEstado;
             if (filterFinanciera) params.financieraId = filterFinanciera;
-            const res = await solicitudesFinanciacionApi.getAll(params);
-            const raw = res.data?.data?.results ?? res.data?.data ?? [];
+            const res = await solicitudesFinanciacionApi.getAll(params) as { results?: SolicitudFinanciacion[]; totalPages?: number };
+            const raw = res?.results ?? [];
             setSolicitudes(Array.isArray(raw) ? raw : []);
-            setTotalPages(res.data?.data?.totalPages ?? 1);
+            setTotalPages(res?.totalPages ?? 1);
         } catch {
             addToast('Error al cargar solicitudes', 'error');
         } finally {
@@ -160,7 +160,7 @@ export default function FinanciacionExternaPage() {
                 const [clRes] = await Promise.all([
                     clientesApi.getAll({}, { limit: 200 }),
                 ]);
-                const clRaw = clRes.data?.data?.results ?? clRes.data?.data ?? [];
+                const clRaw = clRes?.results ?? [];
                 setClientes(Array.isArray(clRaw) ? clRaw : []);
             } catch {
                 // silent

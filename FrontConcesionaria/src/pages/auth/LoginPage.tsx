@@ -19,7 +19,18 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const result = await client.post('/auth/login', {
+      interface LoginResponse {
+        user: {
+          id: number;
+          nombre: string;
+          email: string;
+          roles: string[];
+          concesionariaId: number | null;
+          sucursalId: number | null;
+        };
+        tokens: { access: string; refresh: string };
+      }
+      const result = await client.post<LoginResponse>('/auth/login', {
         email,
         password,
       });

@@ -6,6 +6,7 @@ import { GetReservaById } from '../../application/use-cases/reservas/GetReservaB
 import { CreateReserva } from '../../application/use-cases/reservas/CreateReserva';
 import { UpdateReserva } from '../../application/use-cases/reservas/UpdateReserva';
 import { DeleteReserva } from '../../application/use-cases/reservas/DeleteReserva';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaReservaRepository();
 const vehiculoRepository = new PrismaVehiculoRepository();
@@ -39,6 +40,12 @@ export class ReservaController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createReservaUC.execute(req.body);
+            await audit({
+                entidad: 'Reserva',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Reserva ${(result as any)?.id} creada`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -49,6 +56,12 @@ export class ReservaController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updateReservaUC.execute(id, req.body);
+            await audit({
+                entidad: 'Reserva',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Reserva ${id} actualizada`,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -59,6 +72,12 @@ export class ReservaController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteReservaUC.execute(id);
+            await audit({
+                entidad: 'Reserva',
+                accion: 'cancel',
+                entidadId: id,
+                detalle: `Reserva ${id} cancelada`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

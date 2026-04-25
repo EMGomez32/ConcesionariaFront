@@ -1,15 +1,14 @@
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-const client = axios.create({
+const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Request Interceptor: Attach access token
-client.interceptors.request.use(
+axiosInstance.interceptors.request.use(
     (config) => {
         const { accessToken } = useAuthStore.getState();
         if (accessToken) {
@@ -20,13 +19,11 @@ client.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle errors and refresh token
-client.interceptors.response.use(
-    (response) => response.data, // Return only response.data for easier use
+axiosInstance.interceptors.response.use(
+    (response) => response.data,
     async (error) => {
         const originalRequest = error.config;
 
-        // If 401 and not already retrying
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
             const { refreshToken, setAccessToken, logout } = useAuthStore.getState();
@@ -37,13 +34,11 @@ client.interceptors.response.use(
                         refreshToken,
                     });
 
-                    // El backend devuelve directamente { access, refresh }
                     const { access } = response.data;
                     setAccessToken(access);
 
-                    // Retry the original request with the new token
                     originalRequest.headers.Authorization = `Bearer ${access}`;
-                    return client(originalRequest);
+                    return axiosInstance(originalRequest);
                 } catch (refreshError) {
                     logout();
                     window.location.href = '/login';
@@ -55,5 +50,21 @@ client.interceptors.response.use(
         return Promise.reject(error.response?.data || error.message);
     }
 );
+
+// The response interceptor unwraps `response.data`, so every call resolves
+// to the response body directly. This wrapper aligns the static types with
+// that runtime behavior (Promise<T> instead of Promise<AxiosResponse<T>>).
+const client = {
+    get: <T>(url: string, config?: AxiosRequestConfig) =>
+        axiosInstance.get<T, T>(url, config),
+    post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+        axiosInstance.post<T, T>(url, data, config),
+    patch: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+        axiosInstance.patch<T, T>(url, data, config),
+    put: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+        axiosInstance.put<T, T>(url, data, config),
+    delete: <T>(url: string, config?: AxiosRequestConfig) =>
+        axiosInstance.delete<T, T>(url, config),
+};
 
 export default client;

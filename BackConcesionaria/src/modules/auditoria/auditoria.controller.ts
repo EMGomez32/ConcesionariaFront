@@ -30,9 +30,45 @@ export const getAuditLogById = catchAsync(async (req: Request, res: Response) =>
 });
 
 export const exportAuditLogs = catchAsync(async (req: Request, res: Response) => {
-    const filter: any = pick(req.query, ['entidad', 'accion', 'usuarioId']);
+    const filter: any = pick(req.query, ['entidad', 'accion', 'usuarioId', 'startDate', 'endDate']);
+
+    if (filter.startDate || filter.endDate) {
+        filter.createdAt = {};
+        if (filter.startDate) filter.createdAt.gte = new Date(filter.startDate);
+        if (filter.endDate) filter.createdAt.lte = new Date(filter.endDate);
+        delete filter.startDate;
+        delete filter.endDate;
+    }
+
     filter.concesionariaId = req.user?.concesionariaId;
 
     const result = await auditoriaService.getAuditLogs(filter, { limit: 10000 });
-    res.send(ApiResponse.success({ results: result.results }));
+
+    const escape = (v: unknown): string => {
+        if (v === null || v === undefined) return '';
+        const s = String(v);
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+
+    const headers = ['id', 'fecha', 'usuarioId', 'usuarioNombre', 'usuarioEmail', 'entidad', 'entidadId', 'accion', 'detalle', 'ip', 'userAgent'];
+    const rows = (result.results as any[]).map(r => [
+        r.id,
+        r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+        r.usuarioId,
+        r.usuario?.nombre,
+        r.usuario?.email,
+        r.entidad,
+        r.entidadId,
+        r.accion,
+        r.detalle,
+        r.ip,
+        r.userAgent,
+    ].map(escape).join(','));
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const filename = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('﻿' + csv);
 });

@@ -15,7 +15,7 @@ export const useAuditLogs = (filters: any = {}, options: PaginationOptions = {})
         queryKey: auditKeys.list({ ...filters, ...options }),
         queryFn: async () => {
             const res = await auditoriaApi.getAll({ ...filters, ...options });
-            return res as any;
+            return res;
         },
     });
 };
@@ -25,7 +25,7 @@ export const useAuditLog = (id: number) => {
         queryKey: auditKeys.detail(id),
         queryFn: async () => {
             const res = await auditoriaApi.getById(id);
-            return res as any;
+            return res;
         },
         enabled: !!id,
     });

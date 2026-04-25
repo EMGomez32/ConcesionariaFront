@@ -7,4 +7,7 @@ export interface IConcesionariaRepository {
     create(data: Partial<Concesionaria>): Promise<Concesionaria>;
     update(id: number, data: Partial<Concesionaria>): Promise<Concesionaria>;
     delete(id: number): Promise<void>;
+    countActiveSucursales(id: number): Promise<number>;
+    countActiveUsuarios(id: number): Promise<number>;
+    countActiveVehiculos(id: number): Promise<number>;
 }

@@ -38,7 +38,10 @@ const ProveedorForm: React.FC<ProveedorFormProps> = ({ onSubmit, initialData, on
 
     useEffect(() => {
         if (isSuperAdmin) {
-            concesionariasApi.getAll().then(res => setConcesionarias(res.data.results || res.data));
+            concesionariasApi.getAll().then(res => {
+                const r = res as { results?: Concesionaria[] } | Concesionaria[];
+                setConcesionarias(Array.isArray(r) ? r : (r?.results ?? []));
+            });
         }
     }, [isSuperAdmin]);
 

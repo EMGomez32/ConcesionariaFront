@@ -16,7 +16,7 @@ export const useVehiculos = (filters: VehiculoFilter = {}, options: PaginationOp
         queryKey: vehiculosKeys.list(filters, options),
         queryFn: async () => {
             const res = await vehiculosApi.getAll(filters, options);
-            return res as any;
+            return res;
         },
     });
 };
@@ -26,7 +26,7 @@ export const useVehiculo = (id: number) => {
         queryKey: vehiculosKeys.detail(id),
         queryFn: async () => {
             const res = await vehiculosApi.getById(id);
-            return res as any;
+            return res;
         },
         enabled: !!id,
     });

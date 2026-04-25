@@ -10,7 +10,8 @@ export const authorize = (...roles: string[]) => {
         }
 
         const hasRole = roles.some(role => user.roles.includes(role));
-        if (!hasRole && !user.roles.includes('admin')) {
+        // super_admin bypasses all role requirements.
+        if (!hasRole && !user.roles.includes('super_admin')) {
             throw new ForbiddenException(`Access denied. Required roles: ${roles.join(', ')}`);
         }
         next();

@@ -40,20 +40,17 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({ usuario, onSave, onCancel, lo
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                const rolesRes = await rolesApi.getAll();
-                const rolesData = rolesRes.data?.data ?? rolesRes.data ?? rolesRes;
-                setRoles(rolesData.results || rolesData || []);
+                const rolesRes = await rolesApi.getAll() as { results?: Rol[] } | Rol[];
+                setRoles(Array.isArray(rolesRes) ? rolesRes : (rolesRes?.results ?? []));
 
                 if (isSuperAdmin) {
                     // Super admin: load all concesionarias
-                    const concRes = await concesionariasApi.getAll();
-                    const concData = concRes.data?.data ?? concRes.data ?? concRes;
-                    setConcesionarias(concData.results || concData || []);
+                    const concRes = await concesionariasApi.getAll() as { results?: Concesionaria[] } | Concesionaria[];
+                    setConcesionarias(Array.isArray(concRes) ? concRes : (concRes?.results ?? []));
                 } else if (currentUser?.concesionariaId) {
                     // Admin: load only sucursales from their concesionaria
-                    const sucRes = await sucursalesApi.getAll({ concesionariaId: currentUser.concesionariaId });
-                    const sucData = sucRes.data?.data ?? sucRes.data ?? sucRes;
-                    setSucursales(sucData.results || sucData || []);
+                    const sucRes = await sucursalesApi.getAll({ concesionariaId: currentUser.concesionariaId }) as { results?: Sucursal[] } | Sucursal[];
+                    setSucursales(Array.isArray(sucRes) ? sucRes : (sucRes?.results ?? []));
                 }
             } catch (error) {
                 console.error('Error al cargar datos del formulario:', error);
@@ -70,9 +67,8 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({ usuario, onSave, onCancel, lo
         if (isSuperAdmin && selectedConcesionariaId) {
             const loadSucursales = async () => {
                 try {
-                    const res = await sucursalesApi.getAll({ concesionariaId: selectedConcesionariaId });
-                    const sucData = res.data?.data ?? res.data ?? res;
-                    setSucursales(sucData.results || sucData || []);
+                    const res = await sucursalesApi.getAll({ concesionariaId: selectedConcesionariaId }) as { results?: Sucursal[] } | Sucursal[];
+                    setSucursales(Array.isArray(res) ? res : (res?.results ?? []));
                 } catch (error) {
                     console.error('Error al cargar sucursales:', error);
                 }

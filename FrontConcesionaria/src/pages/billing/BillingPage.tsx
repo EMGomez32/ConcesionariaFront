@@ -182,8 +182,9 @@ export default function BillingPage() {
     setLoadingPlanes(true);
     try {
       const params = filterPlanActivo !== '' ? { activo: filterPlanActivo === 'true' } : undefined;
-      const res = await billingApi.getPlanes(params);
-      setPlanes(res.data?.data?.results ?? res.data?.data ?? res.data ?? []);
+      const res = await billingApi.getPlanes(params) as { results?: Plan[] } | Plan[];
+      const arr: Plan[] = Array.isArray(res) ? res : (res?.results ?? []);
+      setPlanes(arr);
     } catch {
       addToast('Error al cargar planes', 'error');
     } finally {
@@ -265,15 +266,15 @@ export default function BillingPage() {
   const fetchConcWithSubs = useCallback(async () => {
     setLoadingConc(true);
     try {
-      const res = await concesionariasApi.getAll({}, { limit: 200 });
-      const list: Concesionaria[] = res.data?.data?.results ?? res.data?.data ?? [];
+      const res = await concesionariasApi.getAll({}, { limit: 200 }) as { results?: Concesionaria[] } | Concesionaria[];
+      const list: Concesionaria[] = Array.isArray(res) ? res : (res?.results ?? []);
       setConcesionarias(list);
       const subMap: Record<number, ConcesionariaSubscription | null> = {};
       await Promise.allSettled(
         list.map(async (c) => {
           try {
             const r = await billingApi.getSubscriptionByConcesionaria(c.id);
-            subMap[c.id] = r.data?.data ?? r.data ?? null;
+            subMap[c.id] = (r as ConcesionariaSubscription | null) ?? null;
           } catch {
             subMap[c.id] = null;
           }
@@ -362,11 +363,10 @@ export default function BillingPage() {
     try {
       const params: { status?: InvoiceStatus; page: number; limit: number } = { page: invPage, limit: 20 };
       if (filterInvStatus) params.status = filterInvStatus as InvoiceStatus;
-      const res = await billingApi.getInvoices(params);
-      const data = res.data?.data;
-      const results: Invoice[] = data?.results ?? data ?? [];
+      const res = await billingApi.getInvoices(params) as { results?: Invoice[]; totalPages?: number };
+      const results: Invoice[] = res?.results ?? [];
       setInvoices(results);
-      if (data?.totalPages) setInvTotalPages(data.totalPages);
+      if (res?.totalPages) setInvTotalPages(res.totalPages);
     } catch {
       addToast('Error al cargar facturas', 'error');
     } finally {
@@ -380,7 +380,10 @@ export default function BillingPage() {
   useEffect(() => {
     if (activeTab === 'facturas' && concesionarias.length === 0) {
       concesionariasApi.getAll({}, { limit: 200 })
-        .then(res => setConcesionarias(res.data?.data?.results ?? res.data?.data ?? []))
+        .then(res => {
+          const r = res as { results?: Concesionaria[] } | Concesionaria[];
+          setConcesionarias(Array.isArray(r) ? r : (r?.results ?? []));
+        })
         .catch(() => {});
     }
   }, [activeTab, concesionarias.length]);
@@ -391,7 +394,7 @@ export default function BillingPage() {
     setInvFormSubLoading(true);
     try {
       const r = await billingApi.getSubscriptionByConcesionaria(concId);
-      const sub: ConcesionariaSubscription = r.data?.data ?? r.data;
+      const sub = r as ConcesionariaSubscription;
       if (sub?.id) setInvForm(f => ({ ...f, subscriptionId: sub.id }));
     } catch {
       addToast('Esta concesionaria no tiene suscripción asignada', 'info');
@@ -431,7 +434,7 @@ export default function BillingPage() {
   const handleViewInvoice = async (inv: Invoice) => {
     try {
       const res = await billingApi.getInvoiceById(inv.id);
-      setSelectedInvoice(res.data?.data ?? res.data ?? inv);
+      setSelectedInvoice((res as Invoice) ?? inv);
     } catch {
       setSelectedInvoice(inv);
     }

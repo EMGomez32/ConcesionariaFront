@@ -7,6 +7,7 @@ import { UpdateCliente } from '../../application/use-cases/clientes/UpdateClient
 import { DeleteCliente } from '../../application/use-cases/clientes/DeleteCliente';
 import { cleanFilters } from '../../utils/cleanFilters';
 import parseNumericFields from '../../utils/parseNumericFields';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaClienteRepository();
 const getClientesUC = new GetClientes(repository);
@@ -44,6 +45,12 @@ export class ClienteController {
             // Convertir campos numéricos del body
             const data = parseNumericFields(req.body, ['concesionariaId']);
             const result = await createClienteUC.execute(data);
+            await audit({
+                entidad: 'Cliente',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Cliente ${(result as any)?.nombre ?? (result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -56,6 +63,12 @@ export class ClienteController {
             // Convertir campos numéricos del body
             const data = parseNumericFields(req.body, ['concesionariaId']);
             const result = await updateClienteUC.execute(id, data);
+            await audit({
+                entidad: 'Cliente',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Cliente ${(result as any)?.nombre ?? id} actualizado`,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -66,6 +79,12 @@ export class ClienteController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteClienteUC.execute(id);
+            await audit({
+                entidad: 'Cliente',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `Cliente ${id} eliminado`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

@@ -106,10 +106,10 @@ const PresupuestosPage = () => {
             sucursalesApi.getAll({}, { limit: 100 }),
             vehiculosApi.getAll({ estado: 'publicado' }, { limit: 1000 }),
         ]).then(([c, u, s, v]) => {
-            setClientes(c.data?.data?.results ?? c.data?.data ?? []);
-            setVendedores(u.data?.data?.results ?? u.data?.data ?? []);
-            setSucursales(s.data?.data?.results ?? s.data?.data ?? []);
-            setVehiculos(v.data?.data?.results ?? v.data?.data ?? []);
+            setClientes(c.results ?? []);
+            setVendedores((u as { results?: unknown[] }).results ?? []);
+            setSucursales((s as { results?: unknown[] }).results ?? []);
+            setVehiculos(v.results ?? []);
         });
     }, []);
 
@@ -120,9 +120,8 @@ const PresupuestosPage = () => {
             const params: Record<string, unknown> = { page: p, limit: 15 };
             if (filterEstado) params.estado = filterEstado;
             const res = await presupuestosApi.getAll(params);
-            const payload = res.data?.data;
-            setPresupuestos(payload?.results ?? payload ?? []);
-            setTotalPages(payload?.totalPages ?? 1);
+            setPresupuestos(res?.results ?? []);
+            setTotalPages(res?.totalPages ?? 1);
             setPage(p);
         } catch {
             addToast('Error al sincronizar la matriz de cotizaciones', 'error');

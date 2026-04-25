@@ -5,7 +5,7 @@ import { GetConcesionariaById } from '../../application/use-cases/concesionarias
 import { CreateConcesionaria } from '../../application/use-cases/concesionarias/CreateConcesionaria';
 import { UpdateConcesionaria } from '../../application/use-cases/concesionarias/UpdateConcesionaria';
 import { DeleteConcesionaria } from '../../application/use-cases/concesionarias/DeleteConcesionaria';
-import ApiResponse from '../../utils/ApiResponse';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaConcesionariaRepository();
 const getConcesionariasUC = new GetConcesionarias(repository);
@@ -19,13 +19,7 @@ export class ConcesionariaController {
         try {
             const { limit, page, sortBy, sortOrder, ...filters } = req.query;
             const result = await getConcesionariasUC.execute(filters, { limit, page, sortBy, sortOrder } as any);
-            const response = ApiResponse.success(result.results, {
-                page: result.page,
-                limit: result.limit,
-                totalPages: result.totalPages,
-                totalResults: result.totalResults
-            });
-            res.json(response);
+            res.json(result);
         } catch (error) {
             next(error);
         }
@@ -44,6 +38,13 @@ export class ConcesionariaController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createConcesionariaUC.execute(req.body);
+            await audit({
+                entidad: 'Concesionaria',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Concesionaria ${(result as any)?.nombre ?? (result as any)?.id} creada`,
+                concesionariaId: (result as any)?.id,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -54,6 +55,13 @@ export class ConcesionariaController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updateConcesionariaUC.execute(id, req.body);
+            await audit({
+                entidad: 'Concesionaria',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Concesionaria ${(result as any)?.nombre ?? id} actualizada`,
+                concesionariaId: id,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -64,6 +72,13 @@ export class ConcesionariaController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteConcesionariaUC.execute(id);
+            await audit({
+                entidad: 'Concesionaria',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `Concesionaria ${id} eliminada`,
+                concesionariaId: id,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

@@ -132,12 +132,11 @@ export default function AuditoriaPage() {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await auditoriaApi.getAll(buildFilter());
-      const data = res.data?.data;
-      const results: AuditLog[] = data?.results ?? data ?? [];
+      const res = await auditoriaApi.getAll(buildFilter()) as { results?: AuditLog[]; totalPages?: number; totalResults?: number };
+      const results: AuditLog[] = res?.results ?? [];
       setLogs(results);
-      if (data?.totalPages) setTotalPages(data.totalPages);
-      if (data?.totalResults) setTotalResults(data.totalResults);
+      if (res?.totalPages) setTotalPages(res.totalPages);
+      if (res?.totalResults) setTotalResults(res.totalResults);
     } catch {
       addToast('Error al cargar el log de auditoría', 'error');
     } finally {
@@ -157,8 +156,8 @@ export default function AuditoriaPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const res = await auditoriaApi.exportCsv(buildFilter());
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const res = await auditoriaApi.exportCsv(buildFilter()) as Blob;
+      const url = window.URL.createObjectURL(new Blob([res]));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `auditoria_${new Date().toISOString().slice(0, 10)}.csv`);

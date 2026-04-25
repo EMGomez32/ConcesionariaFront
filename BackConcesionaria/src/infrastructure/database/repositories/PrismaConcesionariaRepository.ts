@@ -68,6 +68,18 @@ export class PrismaConcesionariaRepository implements IConcesionariaRepository {
         await prisma.concesionaria.delete({ where: { id } });
     }
 
+    async countActiveSucursales(id: number): Promise<number> {
+        return prisma.sucursal.count({ where: { concesionariaId: id, deletedAt: null } });
+    }
+
+    async countActiveUsuarios(id: number): Promise<number> {
+        return prisma.usuario.count({ where: { concesionariaId: id, deletedAt: null } });
+    }
+
+    async countActiveVehiculos(id: number): Promise<number> {
+        return prisma.vehiculo.count({ where: { concesionariaId: id, deletedAt: null } });
+    }
+
     private mapToEntity(c: any): Concesionaria {
         return new Concesionaria(
             c.id,

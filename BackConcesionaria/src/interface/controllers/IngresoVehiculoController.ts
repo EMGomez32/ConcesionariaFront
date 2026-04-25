@@ -4,6 +4,7 @@ import { GetIngresosVehiculo } from '../../application/use-cases/vehiculo-ingres
 import { GetIngresoVehiculoById } from '../../application/use-cases/vehiculo-ingresos/GetIngresoVehiculoById';
 import { CreateIngresoVehiculo } from '../../application/use-cases/vehiculo-ingresos/CreateIngresoVehiculo';
 import { DeleteIngresoVehiculo } from '../../application/use-cases/vehiculo-ingresos/DeleteIngresoVehiculo';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaIngresoVehiculoRepository();
 const getIngresosUC = new GetIngresosVehiculo(repository);
@@ -35,6 +36,12 @@ export class IngresoVehiculoController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createUC.execute(req.body);
+            await audit({
+                entidad: 'IngresoVehiculo',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `IngresoVehiculo ${(result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -45,6 +52,12 @@ export class IngresoVehiculoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteUC.execute(id);
+            await audit({
+                entidad: 'IngresoVehiculo',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `IngresoVehiculo ${id} eliminado`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);

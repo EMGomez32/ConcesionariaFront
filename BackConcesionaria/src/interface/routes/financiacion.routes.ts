@@ -6,6 +6,7 @@ const router = Router();
 router.get('/', FinanciacionController.getAll);
 router.get('/:id', FinanciacionController.getById);
 router.post('/', FinanciacionController.create);
+router.patch('/:id', FinanciacionController.update);
 router.patch('/cuotas/:cuotaId/pagar', FinanciacionController.pagarCuota);
 
 export default router;

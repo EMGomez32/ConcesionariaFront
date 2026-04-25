@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaVehiculoMovimientoRepository } from '../../infrastructure/database/repositories/PrismaVehiculoMovimientoRepository';
 import { GetMovimientos } from '../../application/use-cases/vehiculo-movimientos/GetMovimientos';
 import { CreateMovimiento } from '../../application/use-cases/vehiculo-movimientos/CreateMovimiento';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaVehiculoMovimientoRepository();
 const getMovimientosUC = new GetMovimientos(repository);
@@ -21,6 +22,12 @@ export class VehiculoMovimientoController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createUC.execute(req.body);
+            await audit({
+                entidad: 'VehiculoMovimiento',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `VehiculoMovimiento ${(result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);

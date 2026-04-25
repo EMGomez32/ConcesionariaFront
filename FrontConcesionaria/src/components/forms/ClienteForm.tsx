@@ -3,7 +3,7 @@ import type { Cliente } from '../../types/cliente.types';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import Select from '../ui/Select';
-import { User, Phone, Mail, MapPin, FileText, Building2, MessageSquare, Search, AlertCircle, CheckCircle2, Edit } from 'lucide-react';
+import { User, Phone, Mail, MapPin, FileText, Building2, MessageSquare, Search, AlertCircle, Edit } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { concesionariasApi } from '../../api/concesionarias.api';
 import { clientesApi } from '../../api/clientes.api';
@@ -36,7 +36,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({ onSubmit, initialData, onCanc
     const [step, setStep] = useState<'dni-check' | 'form'>(initialData ? 'form' : 'dni-check');
     const [dniToCheck, setDniToCheck] = useState('');
     const [concesionariaIdForCheck, setConcesionariaIdForCheck] = useState<number | undefined>(
-        isSuperAdmin ? undefined : user?.concesionariaId
+        isSuperAdmin ? undefined : (user?.concesionariaId ?? undefined)
     );
     const [checkingDni, setCheckingDni] = useState(false);
     const [existingCliente, setExistingCliente] = useState<Cliente | null>(null);
@@ -48,8 +48,8 @@ const ClienteForm: React.FC<ClienteFormProps> = ({ onSubmit, initialData, onCanc
     useEffect(() => {
         if (isSuperAdmin) {
             concesionariasApi.getAll().then(res => {
-                const data = res.data?.data ?? res.data;
-                setConcesionarias(data.results || data);
+                const r = res as { results?: Concesionaria[] } | Concesionaria[];
+                setConcesionarias(Array.isArray(r) ? r : (r?.results ?? []));
             });
         }
     }, [isSuperAdmin]);

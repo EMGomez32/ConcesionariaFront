@@ -54,6 +54,10 @@ export class PrismaProveedorRepository implements IProveedorRepository {
         return prisma.gastoVehiculo.count({ where: { proveedorId: id } });
     }
 
+    async countPostventaItems(id: number): Promise<number> {
+        return prisma.postventaItem.count({ where: { proveedorId: id } });
+    }
+
     private mapToEntity(p: any): Proveedor {
         return new Proveedor(
             p.id,

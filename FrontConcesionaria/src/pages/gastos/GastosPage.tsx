@@ -33,7 +33,7 @@ const EMPTY_GASTO_FORM = {
     categoriaId: '',
     sucursalId: '',
     monto: '',
-    moneda: 'ARS',
+    moneda: 'ARS' as 'ARS' | 'USD',
     fechaGasto: new Date().toISOString().split('T')[0],
     descripcion: '',
 };
@@ -189,7 +189,7 @@ const GastosPage: React.FC = () => {
         });
     };
 
-    const totalInView = useMemo(() => gastos.reduce((acc, curr) => acc + Number(curr.monto), 0), [gastos]);
+    const totalInView = useMemo(() => gastos.reduce((acc: number, curr: GastoVehiculo) => acc + Number(curr.monto), 0), [gastos]);
 
     const gastoColumns: Column<GastoVehiculo>[] = [
         {

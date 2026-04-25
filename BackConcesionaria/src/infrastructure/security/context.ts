@@ -10,6 +10,8 @@ export interface UserContext {
 export interface AppContext {
     user?: UserContext;
     correlationId?: string;
+    ip?: string;
+    userAgent?: string;
 }
 
 const storage = new AsyncLocalStorage<AppContext>();
@@ -29,5 +31,11 @@ export const context = {
     },
     getCorrelationId: (): string | undefined => {
         return storage.getStore()?.correlationId;
+    },
+    getIp: (): string | undefined => {
+        return storage.getStore()?.ip;
+    },
+    getUserAgent: (): string | undefined => {
+        return storage.getStore()?.userAgent;
     },
 };

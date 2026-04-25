@@ -35,9 +35,9 @@ const ClienteDetallePage = () => {
                     ventasApi.getAll({ clienteId: Number(id) }),
                     presupuestosApi.getAll({ clienteId: Number(id) }),
                 ]);
-                setCliente(clienteRes.data);
-                setVentas(ventasRes.data.results);
-                setPresupuestos(presupuestosRes.data.results);
+                setCliente(clienteRes);
+                setVentas(ventasRes.results);
+                setPresupuestos(presupuestosRes.results);
             } catch {
                 setError('No se pudo cargar el cliente.');
             } finally {

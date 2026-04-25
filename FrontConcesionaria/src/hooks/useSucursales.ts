@@ -15,34 +15,10 @@ export const useSucursales = (filters: SucursalFilter = {}, options: PaginationO
     return useQuery<Sucursal[]>({
         queryKey: sucursalesKeys.list(filters, options),
         queryFn: async () => {
-            console.log('🔍 Fetching sucursales with filters:', filters, 'options:', options);
             const res = await sucursalesApi.getAll(filters, options);
-            console.log('📦 Raw response from API:', res);
-            
-            // La respuesta puede venir en diferentes formatos:
-            // 1. {success: true, data: [...], meta: {...}}
-            // 2. {results: [...], page: 1, ...}
-            // 3. [...] directamente
-            
-            let data: any;
-            
-            if ((res as any)?.data) {
-                // Formato: {success: true, data: [...], meta: {...}}
-                data = (res as any).data;
-            } else if ((res as any)?.results) {
-                // Formato: {results: [...], page: 1, ...}
-                data = (res as any).results;
-            } else if (Array.isArray(res)) {
-                // Formato: [...] directamente
-                data = res;
-            } else {
-                data = [];
-            }
-            
-            console.log('✅ Extracted data:', data);
-            const result = Array.isArray(data) ? data : [];
-            console.log('🎯 Final result:', result, 'count:', result.length);
-            return result;
+            if (Array.isArray(res)) return res as Sucursal[];
+            const paged = res as { results?: Sucursal[] };
+            return paged?.results ?? [];
         },
     });
 };

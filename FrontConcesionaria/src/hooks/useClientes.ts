@@ -14,7 +14,7 @@ export const useClientes = (filters: ClienteFilter = {}, options: PaginationOpti
         queryKey: CLIENTES_KEYS.list(filters, options),
         queryFn: async () => {
             const res = await clientesApi.getAll(filters, options);
-            return res as any;
+            return res;
         },
     });
 };

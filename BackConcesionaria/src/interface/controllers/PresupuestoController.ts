@@ -5,6 +5,11 @@ import { GetPresupuestoById } from '../../application/use-cases/presupuestos/Get
 import { CreatePresupuesto } from '../../application/use-cases/presupuestos/CreatePresupuesto';
 import { UpdatePresupuesto } from '../../application/use-cases/presupuestos/UpdatePresupuesto';
 import { DeletePresupuesto } from '../../application/use-cases/presupuestos/DeletePresupuesto';
+import { ConvertPresupuestoToVenta } from '../../application/use-cases/presupuestos/ConvertPresupuestoToVenta';
+import { CreateVenta } from '../../application/use-cases/ventas/CreateVenta';
+import { PrismaVentaRepository } from '../../infrastructure/database/repositories/PrismaVentaRepository';
+import { PrismaVehiculoRepository } from '../../infrastructure/database/repositories/PrismaVehiculoRepository';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaPresupuestoRepository();
 const getPresupuestosUC = new GetPresupuestos(repository);
@@ -12,6 +17,10 @@ const getPresupuestoByIdUC = new GetPresupuestoById(repository);
 const createPresupuestoUC = new CreatePresupuesto(repository);
 const updatePresupuestoUC = new UpdatePresupuesto(repository);
 const deletePresupuestoUC = new DeletePresupuesto(repository);
+const convertPresupuestoToVentaUC = new ConvertPresupuestoToVenta(
+    repository,
+    new CreateVenta(new PrismaVentaRepository(), new PrismaVehiculoRepository())
+);
 
 export class PresupuestoController {
     static async getAll(req: Request, res: Response, next: NextFunction) {
@@ -37,6 +46,12 @@ export class PresupuestoController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createPresupuestoUC.execute(req.body);
+            await audit({
+                entidad: 'Presupuesto',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `Presupuesto ${(result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -47,6 +62,12 @@ export class PresupuestoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updatePresupuestoUC.execute(id, req.body);
+            await audit({
+                entidad: 'Presupuesto',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Presupuesto ${id} actualizado`,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -57,7 +78,29 @@ export class PresupuestoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deletePresupuestoUC.execute(id);
+            await audit({
+                entidad: 'Presupuesto',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `Presupuesto ${id} eliminado`,
+            });
             res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async convertToVenta(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const result = await convertPresupuestoToVentaUC.execute(id, req.body);
+            await audit({
+                entidad: 'Presupuesto',
+                accion: 'update',
+                entidadId: id,
+                detalle: 'Presupuesto convertido en venta',
+            });
+            res.status(201).json(result);
         } catch (error) {
             next(error);
         }

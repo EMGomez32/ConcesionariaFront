@@ -5,7 +5,8 @@ import prisma from '../prisma';
 export class PrismaVehiculoArchivoRepository implements IVehiculoArchivoRepository {
     async findByVehiculo(vehiculoId: number): Promise<VehiculoArchivo[]> {
         const results = await prisma.vehiculoArchivo.findMany({
-            where: { vehiculoId }
+            where: { vehiculoId },
+            orderBy: { createdAt: 'desc' },
         });
         return results.map(this.mapToEntity);
     }
@@ -27,14 +28,18 @@ export class PrismaVehiculoArchivoRepository implements IVehiculoArchivoReposito
     private mapToEntity(a: any): VehiculoArchivo {
         return new VehiculoArchivo(
             a.id,
-            a.concesionariaId,
             a.vehiculoId,
-            a.nombre,
             a.url,
-            a.tipo,
-            a.publicId,
+            a.tipo ?? null,
+            a.descripcion ?? null,
+            a.originalName ?? null,
+            a.mimeType ?? null,
+            a.sizeBytes ?? null,
+            a.storageKey ?? null,
+            a.uploadedById ?? null,
             a.createdAt,
-            a.updatedAt
+            a.updatedAt,
+            a.deletedAt ?? null
         );
     }
 }

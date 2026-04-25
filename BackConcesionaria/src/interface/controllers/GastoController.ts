@@ -5,6 +5,7 @@ import { GetGastoById } from '../../application/use-cases/gastos/GetGastoById';
 import { CreateGasto } from '../../application/use-cases/gastos/CreateGasto';
 import { UpdateGasto } from '../../application/use-cases/gastos/UpdateGasto';
 import { DeleteGasto } from '../../application/use-cases/gastos/DeleteGasto';
+import { audit } from '../../infrastructure/security/audit';
 
 const repository = new PrismaGastoRepository();
 const getGastosUC = new GetGastos(repository);
@@ -37,6 +38,12 @@ export class GastoController {
     static async create(req: Request, res: Response, next: NextFunction) {
         try {
             const result = await createGastoUC.execute(req.body);
+            await audit({
+                entidad: 'GastoVehiculo',
+                accion: 'create',
+                entidadId: (result as any)?.id,
+                detalle: `GastoVehiculo ${(result as any)?.id} creado`,
+            });
             res.status(201).json(result);
         } catch (error) {
             next(error);
@@ -47,6 +54,12 @@ export class GastoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             const result = await updateGastoUC.execute(id, req.body);
+            await audit({
+                entidad: 'GastoVehiculo',
+                accion: 'update',
+                entidadId: id,
+                detalle: `GastoVehiculo ${id} actualizado`,
+            });
             res.json(result);
         } catch (error) {
             next(error);
@@ -57,6 +70,12 @@ export class GastoController {
         try {
             const id = parseInt(req.params.id as string, 10);
             await deleteGastoUC.execute(id);
+            await audit({
+                entidad: 'GastoVehiculo',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `GastoVehiculo ${id} eliminado`,
+            });
             res.status(204).send();
         } catch (error) {
             next(error);
