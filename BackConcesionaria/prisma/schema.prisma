@@ -226,8 +226,9 @@ model Vehiculo {
 }
 
 model VehiculoArchivo {
-  id           Int       @id @default(autoincrement())
-  vehiculoId   Int       @map("vehiculo_id")
+  id              Int       @id @default(autoincrement())
+  concesionariaId Int?       @map("concesionaria_id")
+  vehiculoId      Int       @map("vehiculo_id")
   tipo         String?
   url          String
   descripcion  String?
@@ -241,6 +242,7 @@ model VehiculoArchivo {
   deletedAt    DateTime? @map("deleted_at")
   vehiculo     Vehiculo  @relation(fields: [vehiculoId], references: [id])
 
+  @@index([concesionariaId])
   @@index([vehiculoId])
   @@map("vehiculo_archivos")
 }
@@ -453,39 +455,44 @@ model Presupuesto {
 }
 
 model PresupuestoItem {
-  id            Int         @id @default(autoincrement())
-  presupuestoId Int         @map("presupuesto_id")
-  vehiculoId    Int         @map("vehiculo_id")
-  precioLista   Decimal     @map("precio_lista") @db.Decimal(12, 2)
-  descuento     Decimal     @default(0) @db.Decimal(12, 2)
-  precioFinal   Decimal     @map("precio_final") @db.Decimal(12, 2)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  deletedAt     DateTime?   @map("deleted_at")
-  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id])
-  vehiculo      Vehiculo    @relation(fields: [vehiculoId], references: [id])
+  id              Int         @id @default(autoincrement())
+  concesionariaId Int?         @map("concesionaria_id")
+  presupuestoId   Int         @map("presupuesto_id")
+  vehiculoId      Int         @map("vehiculo_id")
+  precioLista     Decimal     @map("precio_lista") @db.Decimal(12, 2)
+  descuento       Decimal     @default(0) @db.Decimal(12, 2)
+  precioFinal     Decimal     @map("precio_final") @db.Decimal(12, 2)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id])
+  vehiculo        Vehiculo    @relation(fields: [vehiculoId], references: [id])
 
+  @@index([concesionariaId])
   @@index([presupuestoId])
   @@index([vehiculoId])
   @@map("presupuesto_items")
 }
 
 model PresupuestoExtra {
-  id            Int         @id @default(autoincrement())
-  presupuestoId Int         @map("presupuesto_id")
-  descripcion   String
-  monto         Decimal     @db.Decimal(12, 2)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  deletedAt     DateTime?   @map("deleted_at")
-  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id])
+  id              Int         @id @default(autoincrement())
+  concesionariaId Int?         @map("concesionaria_id")
+  presupuestoId   Int         @map("presupuesto_id")
+  descripcion     String
+  monto           Decimal     @db.Decimal(12, 2)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id])
 
+  @@index([concesionariaId])
   @@index([presupuestoId])
   @@map("presupuesto_extras")
 }
 
 model PresupuestoCanje {
   id                 Int         @id @default(autoincrement())
+  concesionariaId    Int?         @map("concesionaria_id")
   presupuestoId      Int         @unique @map("presupuesto_id")
   descripcion        String?
   anio               Int?
@@ -501,6 +508,7 @@ model PresupuestoCanje {
   presupuesto        Presupuesto @relation(fields: [presupuestoId], references: [id])
   vehiculoGenerado   Vehiculo?   @relation("VehiculoGeneradoDesdeCanje", fields: [vehiculoGeneradoId], references: [id])
 
+  @@index([concesionariaId])
   @@map("presupuesto_canje")
 }
 
@@ -547,35 +555,39 @@ model Venta {
 }
 
 model VentaExtra {
-  id             Int       @id @default(autoincrement())
-  ventaId        Int       @map("venta_id")
-  descripcion    String
-  monto          Decimal   @db.Decimal(12, 2)
-  comprobanteUrl String?   @map("comprobante_url")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
-  venta          Venta     @relation(fields: [ventaId], references: [id])
+  id              Int       @id @default(autoincrement())
+  concesionariaId Int?       @map("concesionaria_id")
+  ventaId         Int       @map("venta_id")
+  descripcion     String
+  monto           Decimal   @db.Decimal(12, 2)
+  comprobanteUrl  String?   @map("comprobante_url")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+  venta           Venta     @relation(fields: [ventaId], references: [id])
 
+  @@index([concesionariaId])
   @@index([ventaId])
   @@map("venta_extras")
 }
 
 model VentaPago {
-  id             Int        @id @default(autoincrement())
-  ventaId        Int        @map("venta_id")
-  fecha          DateTime   @default(now())
-  monto          Decimal    @db.Decimal(12, 2)
-  metodo         MetodoPago
-  tipo           String?
-  referencia     String?
-  comprobanteUrl String?    @map("comprobante_url")
-  observaciones  String?
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
-  deletedAt      DateTime?  @map("deleted_at")
-  venta          Venta      @relation(fields: [ventaId], references: [id])
+  id              Int        @id @default(autoincrement())
+  concesionariaId Int?        @map("concesionaria_id")
+  ventaId         Int        @map("venta_id")
+  fecha           DateTime   @default(now())
+  monto           Decimal    @db.Decimal(12, 2)
+  metodo          MetodoPago
+  tipo            String?
+  referencia      String?
+  comprobanteUrl  String?    @map("comprobante_url")
+  observaciones   String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+  venta           Venta      @relation(fields: [ventaId], references: [id])
 
+  @@index([concesionariaId])
   @@index([ventaId])
   @@index([fecha])
   @@map("venta_pagos")
@@ -583,6 +595,7 @@ model VentaPago {
 
 model VentaCanjeVehiculo {
   id              Int       @id @default(autoincrement())
+  concesionariaId Int?       @map("concesionaria_id")
   ventaId         Int       @map("venta_id")
   vehiculoCanjeId Int       @map("vehiculo_canje_id")
   valorTomado     Decimal   @map("valor_tomado") @db.Decimal(12, 2)
@@ -592,6 +605,7 @@ model VentaCanjeVehiculo {
   vehiculo        Vehiculo  @relation(fields: [vehiculoCanjeId], references: [id])
   venta           Venta     @relation(fields: [ventaId], references: [id])
 
+  @@index([concesionariaId])
   @@index([ventaId])
   @@index([vehiculoCanjeId])
   @@map("venta_canje_vehiculo")
@@ -630,6 +644,7 @@ model Financiacion {
 
 model Cuota {
   id                Int          @id @default(autoincrement())
+  concesionariaId   Int?          @map("concesionaria_id")
   financiacionId    Int          @map("financiacion_id")
   nroCuota          Int          @map("nro_cuota")
   vencimiento       DateTime     @db.Date
@@ -644,24 +659,27 @@ model Cuota {
   pagos             PagoCuota[]
 
   @@unique([financiacionId, nroCuota])
+  @@index([concesionariaId])
   @@index([vencimiento])
   @@index([estado])
   @@map("cuotas")
 }
 
 model PagoCuota {
-  id            Int        @id @default(autoincrement())
-  cuotaId       Int        @map("cuota_id")
-  fechaPago     DateTime   @map("fecha_pago")
-  monto         Decimal    @db.Decimal(12, 2)
-  metodo        MetodoPago
-  referencia    String?
-  observaciones String?
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  cuota         Cuota      @relation(fields: [cuotaId], references: [id])
+  id              Int        @id @default(autoincrement())
+  concesionariaId Int?        @map("concesionaria_id")
+  cuotaId         Int        @map("cuota_id")
+  fechaPago       DateTime   @map("fecha_pago")
+  monto           Decimal    @db.Decimal(12, 2)
+  metodo          MetodoPago
+  referencia      String?
+  observaciones   String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+  cuota           Cuota      @relation(fields: [cuotaId], references: [id])
 
+  @@index([concesionariaId])
   @@index([cuotaId])
   @@index([fechaPago])
   @@map("pagos_cuota")
@@ -724,20 +742,22 @@ model SolicitudFinanciacion {
 }
 
 model SolicitudFinanciacionArchivo {
-  id           Int                   @id @default(autoincrement())
-  solicitudId  Int                   @map("solicitud_id")
-  tipo         String?
-  url          String
-  descripcion  String?
-  originalName String?               @map("original_name")
-  mimeType     String?               @map("mime_type")
-  sizeBytes    Int?                  @map("size_bytes")
-  storageKey   String?               @map("storage_key")
-  uploadedById Int?                  @map("uploaded_by_id")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  deletedAt   DateTime?              @map("deleted_at")
-  solicitud    SolicitudFinanciacion @relation(fields: [solicitudId], references: [id])
+  id              Int                   @id @default(autoincrement())
+  concesionariaId Int?                   @map("concesionaria_id")
+  solicitudId     Int                   @map("solicitud_id")
+  tipo            String?
+  url             String
+  descripcion     String?
+  originalName    String?               @map("original_name")
+  mimeType        String?               @map("mime_type")
+  sizeBytes       Int?                  @map("size_bytes")
+  storageKey      String?               @map("storage_key")
+  uploadedById    Int?                  @map("uploaded_by_id")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  deletedAt       DateTime?             @map("deleted_at")
+  solicitud       SolicitudFinanciacion @relation(fields: [solicitudId], references: [id])
 
+  @@index([concesionariaId])
   @@index([solicitudId])
   @@map("solicitud_financiacion_archivos")
 }
@@ -774,19 +794,21 @@ model PostventaCaso {
 }
 
 model PostventaItem {
-  id             Int           @id @default(autoincrement())
-  casoId         Int           @map("caso_id")
-  proveedorId    Int?          @map("proveedor_id")
-  fecha          DateTime      @db.Date
-  descripcion    String
-  monto          Decimal       @db.Decimal(12, 2)
-  comprobanteUrl String?       @map("comprobante_url")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  deletedAt      DateTime?     @map("deleted_at")
-  caso           PostventaCaso @relation(fields: [casoId], references: [id])
-  proveedor      Proveedor?    @relation(fields: [proveedorId], references: [id])
+  id              Int           @id @default(autoincrement())
+  concesionariaId Int?           @map("concesionaria_id")
+  casoId          Int           @map("caso_id")
+  proveedorId     Int?          @map("proveedor_id")
+  fecha           DateTime      @db.Date
+  descripcion     String
+  monto           Decimal       @db.Decimal(12, 2)
+  comprobanteUrl  String?       @map("comprobante_url")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+  caso            PostventaCaso @relation(fields: [casoId], references: [id])
+  proveedor       Proveedor?    @relation(fields: [proveedorId], references: [id])
 
+  @@index([concesionariaId])
   @@index([casoId])
   @@index([proveedorId])
   @@map("postventa_items")
@@ -856,6 +878,7 @@ model ConcesionariaSubscription {
 
 model Invoice {
   id                Int                       @id @default(autoincrement())
+  concesionariaId   Int?                       @map("concesionaria_id")
   subscriptionId    Int                       @map("subscription_id")
   status            InvoiceStatus             @default(open)
   numero            String?
@@ -875,6 +898,7 @@ model Invoice {
   subscription      ConcesionariaSubscription @relation(fields: [subscriptionId], references: [id])
   payments          Payment[]
 
+  @@index([concesionariaId])
   @@index([subscriptionId])
   @@index([status])
   @@map("invoices")
@@ -882,6 +906,7 @@ model Invoice {
 
 model Payment {
   id                Int           @id @default(autoincrement())
+  concesionariaId   Int?           @map("concesionaria_id")
   invoiceId         Int           @map("invoice_id")
   status            PaymentStatus @default(pending)
   monto             Decimal       @db.Decimal(12, 2)
@@ -894,6 +919,7 @@ model Payment {
   deletedAt         DateTime?     @map("deleted_at")
   invoice           Invoice       @relation(fields: [invoiceId], references: [id])
 
+  @@index([concesionariaId])
   @@index([invoiceId])
   @@index([status])
   @@map("payments")

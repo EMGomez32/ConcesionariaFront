@@ -29,7 +29,7 @@ services:
       - LOG_LEVEL=debug
       - CORS_ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://localhost:3000
       - UPLOADS_DIR=/app/uploads
-    command: sh -c "npx prisma db push && npm run seed && npm start"
+    command: sh -c "npx prisma db push --accept-data-loss && npm run init-rls && npm run seed && npm start"
     volumes:
       - uploads:/app/uploads
     depends_on:

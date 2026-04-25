@@ -8,12 +8,18 @@ import bcrypt from 'bcryptjs';
 // IMPORTANTE: DATABASE_URL debe ser una URL de postgres estándar (postgres://...)
 // Si usas prisma+postgres://, debes usar la URL que te da el comando 'prisma dev'.
 const connectionString = process.env.DATABASE_URL || '';
-const pool = new Pool({ connectionString: connectionString.replace('prisma+postgres://', 'postgres://') });
+// Pool size 1 so the `set_config` below sticks for every query of this seed.
+const pool = new Pool({ connectionString: connectionString.replace('prisma+postgres://', 'postgres://'), max: 1 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
 
 async function main() {
     console.log('Iniciando seed con Adapter...');
+
+    // Bypass RLS for the seed: set the session var the policies look at.
+    // false = session-scoped (stays until the connection closes); the pool
+    // above is capped at 1 conn so this value applies to every query.
+    await prisma.$executeRawUnsafe(`SELECT set_config('app.is_super_admin', 'true', false)`);
 
     // 1. Roles
     const roles = [
