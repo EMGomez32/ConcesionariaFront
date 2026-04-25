@@ -7,4 +7,6 @@ export interface IPresupuestoRepository {
     create(data: any): Promise<Presupuesto>;
     update(id: number, data: any): Promise<Presupuesto>;
     delete(id: number): Promise<void>;
+    /** Cuenta presupuestos por año en una concesionaria — para generar nroPresupuesto */
+    countByYearAndConcesionaria(year: number, concesionariaId: number): Promise<number>;
 }

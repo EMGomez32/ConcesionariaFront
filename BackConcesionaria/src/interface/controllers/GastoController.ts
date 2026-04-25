@@ -6,6 +6,7 @@ import { CreateGasto } from '../../application/use-cases/gastos/CreateGasto';
 import { UpdateGasto } from '../../application/use-cases/gastos/UpdateGasto';
 import { DeleteGasto } from '../../application/use-cases/gastos/DeleteGasto';
 import { audit } from '../../infrastructure/security/audit';
+import prisma from '../../infrastructure/database/prisma';
 
 const repository = new PrismaGastoRepository();
 const getGastosUC = new GetGastos(repository);
@@ -77,6 +78,28 @@ export class GastoController {
                 detalle: `GastoVehiculo ${id} eliminado`,
             });
             res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /** HU-47: total de gastos por vehículo. Acepta ?vehiculoId= */
+    static async total(req: Request, res: Response, next: NextFunction) {
+        try {
+            const where: any = {};
+            if (req.query.vehiculoId) where.vehiculoId = Number(req.query.vehiculoId);
+            if (req.query.categoriaId) where.categoriaId = Number(req.query.categoriaId);
+            if (req.query.proveedorId) where.proveedorId = Number(req.query.proveedorId);
+            const r = await prisma.gastoVehiculo.aggregate({
+                _sum: { monto: true },
+                _count: true,
+                where,
+            });
+            res.json({
+                total: Number(r._sum.monto ?? 0),
+                count: r._count,
+                filters: where,
+            });
         } catch (error) {
             next(error);
         }

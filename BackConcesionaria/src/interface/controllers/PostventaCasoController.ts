@@ -6,6 +6,7 @@ import { CreateCaso } from '../../application/use-cases/postventa-casos/CreateCa
 import { UpdateCaso } from '../../application/use-cases/postventa-casos/UpdateCaso';
 import { DeleteCaso } from '../../application/use-cases/postventa-casos/DeleteCaso';
 import { audit } from '../../infrastructure/security/audit';
+import prisma from '../../infrastructure/database/prisma';
 
 const repository = new PrismaPostventaCasoRepository();
 const getCasosUC = new GetCasos(repository);
@@ -77,6 +78,25 @@ export class PostventaCasoController {
                 detalle: `PostventaCaso ${id} eliminado`,
             });
             res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /** HU-84: total de items del caso. */
+    static async total(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const r = await prisma.postventaItem.aggregate({
+                where: { casoId: id },
+                _sum: { monto: true },
+                _count: true,
+            });
+            res.json({
+                casoId: id,
+                total: Number(r._sum.monto ?? 0),
+                count: r._count,
+            });
         } catch (error) {
             next(error);
         }

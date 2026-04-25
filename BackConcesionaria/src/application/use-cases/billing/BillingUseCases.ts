@@ -1,5 +1,5 @@
 import { IBillingRepository } from '../../../domain/repositories/IBillingRepository';
-import { NotFoundException } from '../../../domain/exceptions/BaseException';
+import { BaseException, NotFoundException } from '../../../domain/exceptions/BaseException';
 import { assertValidTransition } from '../../../domain/services/stateMachine';
 
 // Planes
@@ -51,7 +51,23 @@ export class GetInvoices {
 
 export class CreateInvoice {
     constructor(private readonly repository: IBillingRepository) { }
-    async execute(data: any) { return this.repository.createInvoice(data); }
+    async execute(data: any) {
+        // HU-94: si el cliente no manda `total`, calcularlo a partir de
+        // subtotal + impuestos. Si tampoco viene `subtotal`, devolver error.
+        const payload = { ...data };
+        const subtotal = payload.subtotal !== undefined ? Number(payload.subtotal) : null;
+        const impuestos = payload.impuestos !== undefined ? Number(payload.impuestos) : 0;
+
+        if (subtotal === null) {
+            throw new BaseException(400, 'subtotal es obligatorio para crear una factura', 'VALIDATION_ERROR');
+        }
+        payload.subtotal = subtotal;
+        payload.impuestos = impuestos;
+        if (payload.total === undefined || payload.total === null) {
+            payload.total = subtotal + impuestos;
+        }
+        return this.repository.createInvoice(payload);
+    }
 }
 
 export class GetInvoiceById {

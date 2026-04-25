@@ -80,6 +80,13 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         return u ? this.mapToEntity(u) : null;
     }
 
+    async findByEmailInConcesionaria(email: string, concesionariaId: number): Promise<Usuario | null> {
+        const u = await prisma.usuario.findFirst({
+            where: { email, concesionariaId },
+        });
+        return u ? this.mapToEntity(u) : null;
+    }
+
     async create(data: any): Promise<Usuario> {
         const { roleIds, ...userData } = data;
         const u = await prisma.usuario.create({

@@ -4,6 +4,7 @@ import { GastoFijoController } from '../controllers/GastoFijoController';
 const router = Router();
 
 router.get('/', GastoFijoController.getAll);
+router.get('/total', GastoFijoController.total);
 router.get('/:id', GastoFijoController.getById);
 router.post('/', GastoFijoController.create);
 router.patch('/:id', GastoFijoController.update);

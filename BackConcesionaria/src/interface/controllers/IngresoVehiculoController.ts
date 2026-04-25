@@ -15,7 +15,16 @@ const deleteUC = new DeleteIngresoVehiculo(repository);
 export class IngresoVehiculoController {
     static async getAll(req: Request, res: Response, next: NextFunction) {
         try {
-            const { limit, page, sortBy, sortOrder, ...filters } = req.query;
+            const { limit, page, sortBy, sortOrder, startDate, endDate, ...filters } = req.query as any;
+
+            // HU-37: filtros por rango de fechas. Convertir a Prisma `gte`/`lte`.
+            if (startDate || endDate) {
+                const range: any = {};
+                if (startDate) range.gte = new Date(String(startDate));
+                if (endDate) range.lte = new Date(String(endDate));
+                filters.fecha = range;
+            }
+
             const result = await getIngresosUC.execute(filters, { limit, page, sortBy, sortOrder } as any);
             res.json(result);
         } catch (error) {

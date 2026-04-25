@@ -74,6 +74,17 @@ export class PrismaPresupuestoRepository implements IPresupuestoRepository {
         await prisma.presupuesto.delete({ where: { id } });
     }
 
+    async countByYearAndConcesionaria(year: number, concesionariaId: number): Promise<number> {
+        const start = new Date(year, 0, 1);
+        const end = new Date(year + 1, 0, 1);
+        return prisma.presupuesto.count({
+            where: {
+                concesionariaId,
+                createdAt: { gte: start, lt: end },
+            },
+        });
+    }
+
     private mapToEntity(p: any): Presupuesto {
         return new Presupuesto(
             p.id,

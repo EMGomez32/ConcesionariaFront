@@ -6,6 +6,8 @@ import { CreateGastoFijo } from '../../application/use-cases/gastos-fijos/Create
 import { UpdateGastoFijo } from '../../application/use-cases/gastos-fijos/UpdateGastoFijo';
 import { DeleteGastoFijo } from '../../application/use-cases/gastos-fijos/DeleteGastoFijo';
 import { audit } from '../../infrastructure/security/audit';
+import prisma from '../../infrastructure/database/prisma';
+import { BaseException } from '../../domain/exceptions/BaseException';
 
 const repository = new PrismaGastoFijoRepository();
 const getGastosUC = new GetGastosFijos(repository);
@@ -77,6 +79,33 @@ export class GastoFijoController {
                 detalle: `GastoFijo ${id} eliminado`,
             });
             res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /** HU-52: total de gastos fijos por período. Acepta ?anio=&mes=&sucursalId=&categoriaId= */
+    static async total(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { anio, mes, sucursalId, categoriaId } = req.query;
+            if (!anio) {
+                throw new BaseException(400, 'El parámetro `anio` es obligatorio', 'VALIDATION_ERROR');
+            }
+            const where: any = { anio: Number(anio) };
+            if (mes) where.mes = Number(mes);
+            if (sucursalId) where.sucursalId = Number(sucursalId);
+            if (categoriaId) where.categoriaId = Number(categoriaId);
+
+            const r = await prisma.gastoFijo.aggregate({
+                _sum: { monto: true },
+                _count: true,
+                where,
+            });
+            res.json({
+                total: Number(r._sum.monto ?? 0),
+                count: r._count,
+                filters: where,
+            });
         } catch (error) {
             next(error);
         }

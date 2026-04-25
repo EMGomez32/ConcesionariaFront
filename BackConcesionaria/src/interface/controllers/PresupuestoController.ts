@@ -10,6 +10,7 @@ import { CreateVenta } from '../../application/use-cases/ventas/CreateVenta';
 import { PrismaVentaRepository } from '../../infrastructure/database/repositories/PrismaVentaRepository';
 import { PrismaVehiculoRepository } from '../../infrastructure/database/repositories/PrismaVehiculoRepository';
 import { audit } from '../../infrastructure/security/audit';
+import prisma from '../../infrastructure/database/prisma';
 
 const repository = new PrismaPresupuestoRepository();
 const getPresupuestosUC = new GetPresupuestos(repository);
@@ -101,6 +102,42 @@ export class PresupuestoController {
                 detalle: 'Presupuesto convertido en venta',
             });
             res.status(201).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * HU-60: total del presupuesto = sum(items.precioFinal) + sum(extras.monto)
+     *        - canje.valorTomado.
+     */
+    static async total(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const [items, extras, canje] = await Promise.all([
+                prisma.presupuestoItem.aggregate({
+                    where: { presupuestoId: id },
+                    _sum: { precioFinal: true },
+                }),
+                prisma.presupuestoExtra.aggregate({
+                    where: { presupuestoId: id },
+                    _sum: { monto: true },
+                }),
+                prisma.presupuestoCanje.findUnique({
+                    where: { presupuestoId: id },
+                    select: { valorTomado: true },
+                }),
+            ]);
+            const subtotalItems = Number(items._sum.precioFinal ?? 0);
+            const subtotalExtras = Number(extras._sum.monto ?? 0);
+            const valorCanje = Number(canje?.valorTomado ?? 0);
+            res.json({
+                presupuestoId: id,
+                subtotalItems,
+                subtotalExtras,
+                valorCanje,
+                total: subtotalItems + subtotalExtras - valorCanje,
+            });
         } catch (error) {
             next(error);
         }

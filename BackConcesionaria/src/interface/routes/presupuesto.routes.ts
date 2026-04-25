@@ -5,6 +5,7 @@ const router = Router();
 
 router.get('/', PresupuestoController.getAll);
 router.get('/:id', PresupuestoController.getById);
+router.get('/:id/total', PresupuestoController.total);
 router.post('/', PresupuestoController.create);
 router.patch('/:id', PresupuestoController.update);
 router.post('/:id/convertir-en-venta', PresupuestoController.convertToVenta);
