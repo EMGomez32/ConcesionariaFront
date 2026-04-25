@@ -58,6 +58,19 @@ const limiter = rateLimit({
     limit: 100,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    // Skip para healthcheck y para tráfico interno de docker / loopback
+    // (frontend container, tests de integración, healthchecks).
+    // En producción, considerar restringir más.
+    skip: (req) => {
+        if (req.path === '/health') return true;
+        const ip = req.ip || '';
+        return (
+            ip.includes('127.0.0.1') ||
+            ip.includes('::1') ||
+            ip.startsWith('::ffff:172.') ||
+            ip.startsWith('172.')
+        );
+    },
 });
 app.use(limiter);
 

@@ -10,7 +10,13 @@ export class JwtTokenService implements ITokenService {
     }
 
     generateRefreshToken(payload: TokenPayload): string {
-        return jwt.sign(payload, config.jwt.refreshSecret, { expiresIn: config.jwt.refreshExpirationDays as any });
+        // jti único garantiza que dos refresh tokens emitidos para el mismo
+        // usuario en el mismo segundo no colisionen al hashearse y violar
+        // el `@unique` de RefreshToken.token.
+        return jwt.sign(payload, config.jwt.refreshSecret, {
+            expiresIn: config.jwt.refreshExpirationDays as any,
+            jwtid: crypto.randomUUID(),
+        });
     }
 
     verifyRefreshToken(token: string): TokenPayload {
