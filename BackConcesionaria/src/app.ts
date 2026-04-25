@@ -17,7 +17,41 @@ import { logger } from './infrastructure/logging/logger';
 const app = express();
 
 // Security Middlewares
-app.use(helmet());
+// Versión "dev-friendly":
+//  - HSTS 1 año + includeSubDomains, sin preload (para no quedar atado).
+//  - CSP heredada del default (permite 'unsafe-inline' en styles, no en scripts).
+//  - crossOriginResourcePolicy 'cross-origin' para que el frontend pueda
+//    consumir /uploads desde su origen (sino el browser bloquea la imagen).
+//  - referrerPolicy strict-origin-when-cross-origin (no leak del path).
+app.use(helmet({
+    hsts: {
+        maxAge: 60 * 60 * 24 * 365, // 1 año
+        includeSubDomains: true,
+        preload: false,
+    },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
+
+// Permissions-Policy: bloquea features del browser que no usamos.
+// Helmet 8 no incluye este header por default, lo seteamos a mano.
+app.use((_req, res, next) => {
+    res.setHeader(
+        'Permissions-Policy',
+        [
+            'accelerometer=()',
+            'camera=()',
+            'geolocation=()',
+            'gyroscope=()',
+            'magnetometer=()',
+            'microphone=()',
+            'payment=()',
+            'usb=()',
+            'interest-cohort=()',
+        ].join(', ')
+    );
+    next();
+});
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
