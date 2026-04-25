@@ -12,6 +12,7 @@ import routes from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpecs from './config/swagger';
 import prisma from './infrastructure/database/prisma';
+import { logger } from './infrastructure/logging/logger';
 
 const app = express();
 
@@ -26,16 +27,29 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const allowedOrigins = env.CORS_ALLOWED_ORIGINS.split(',');
+// CORS — solo browsers de la app permitida.
+// Requests sin Origin (curl, Postman, healthcheck server-to-server) se
+// permiten porque CORS no aporta seguridad ahí — la auth JWT los frena.
+// Para producción, sumar el dominio real al env CORS_ALLOWED_ORIGINS.
+const allowedOrigins = env.CORS_ALLOWED_ORIGINS
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        // Denegado: callback(null, false) NO setea Access-Control-Allow-Origin,
+        // así el browser bloquea solo. Evita generar 500 desde el errorHandler
+        // y deja un log explícito.
+        logger.warn(`[cors] origin rechazado: ${origin}`);
+        return callback(null, false);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-Id'],
+    maxAge: 86400, // cachear el preflight 24h
 }));
 
 // Basic Middlewares
