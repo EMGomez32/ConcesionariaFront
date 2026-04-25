@@ -1,6 +1,46 @@
 import { PrismaClient } from '@prisma/client';
 import { context } from '../security/context';
 
+// Models that have a `deletedAt` column. Reads filter `deletedAt: null`,
+// and `delete`/`deleteMany` are intercepted and turned into soft deletes.
+const SOFT_DELETE_MODELS = [
+    'Concesionaria',
+    'Sucursal',
+    'Usuario',
+    'Cliente',
+    'Proveedor',
+    'Vehiculo',
+    'VehiculoArchivo',
+    'IngresoVehiculo',
+    'VehiculoMovimiento',
+    'Reserva',
+    'Presupuesto',
+    'PresupuestoItem',
+    'PresupuestoExtra',
+    'PresupuestoCanjeVehiculo',
+    'Venta',
+    'VentaPago',
+    'VentaExtra',
+    'VentaCanjeVehiculo',
+    'Financiacion',
+    'Cuota',
+    'PagoCuota',
+    'GastoVehiculo',
+    'CategoriaGastoVehiculo',
+    'GastoFijo',
+    'CategoriaGastoFijo',
+    'Financiera',
+    'SolicitudFinanciacion',
+    'PostventaCaso',
+    'PostventaItem',
+];
+
+const isSoftDeleteModel = (model: string) =>
+    SOFT_DELETE_MODELS.some((m) => m.toLowerCase() === model.toLowerCase());
+
+const accessor = (model: string) =>
+    model.charAt(0).toLowerCase() + model.slice(1);
+
 export const extendedPrisma = (prisma: PrismaClient) => {
     return prisma.$extends({
         query: {
@@ -10,16 +50,14 @@ export const extendedPrisma = (prisma: PrismaClient) => {
                     const userContext = context.getUser();
                     const castArgs = args as any;
 
-                    // Check if user is super_admin
                     const isSuperAdmin = userContext?.roles?.includes('super_admin') || false;
 
-                    // 1. Models that DO NOT have concesionariaId
+                    // Models that DO NOT have concesionariaId
                     const globalModels = ['Concesionaria', 'Rol', 'Plan', 'AuditLog', 'RefreshToken'];
-                    const isGlobal = globalModels.some(m => m.toLowerCase() === model.toLowerCase());
+                    const isGlobal = globalModels.some((m) => m.toLowerCase() === model.toLowerCase());
 
-                    // 2. Automate Soft Delete filtering (deletedAt: null)
-                    const softDeleteModels = ['Concesionaria', 'Sucursal', 'Usuario', 'Cliente', 'Proveedor', 'Vehiculo', 'Venta', 'Presupuesto', 'Reserva'];
-                    if (softDeleteModels.some(m => m.toLowerCase() === model.toLowerCase())) {
+                    // Soft-delete read filter
+                    if (isSoftDeleteModel(model)) {
                         if (['findFirst', 'findMany', 'findUnique', 'findUniqueOrThrow', 'count', 'aggregate', 'groupBy'].includes(operation)) {
                             castArgs.where = castArgs.where || {};
                             if (castArgs.where.deletedAt === undefined) {
@@ -28,8 +66,7 @@ export const extendedPrisma = (prisma: PrismaClient) => {
                         }
                     }
 
-                    // 3. Inject Tenant ID for tenant-specific models
-                    // IMPORTANT: super_admin can access ALL data, so we skip tenant filtering for them
+                    // Tenant injection (skip for super_admin)
                     if (tenantId && !isGlobal && !isSuperAdmin) {
                         if (['findFirst', 'findMany', 'findUnique', 'findUniqueOrThrow', 'count', 'aggregate', 'groupBy'].includes(operation)) {
                             castArgs.where = { ...castArgs.where, concesionariaId: tenantId };
@@ -44,6 +81,24 @@ export const extendedPrisma = (prisma: PrismaClient) => {
                             if (operation === 'upsert') {
                                 castArgs.create = { ...castArgs.create, concesionariaId: tenantId };
                             }
+                        }
+                    }
+
+                    // Soft-delete interception: rewrite delete/deleteMany as updates
+                    // setting `deletedAt`. Uses the raw `prisma` client (closure)
+                    // to avoid re-entering this extension.
+                    if (isSoftDeleteModel(model)) {
+                        if (operation === 'delete') {
+                            return (prisma as any)[accessor(model)].update({
+                                where: castArgs.where,
+                                data: { deletedAt: new Date() },
+                            });
+                        }
+                        if (operation === 'deleteMany') {
+                            return (prisma as any)[accessor(model)].updateMany({
+                                where: castArgs.where,
+                                data: { deletedAt: new Date() },
+                            });
                         }
                     }
 

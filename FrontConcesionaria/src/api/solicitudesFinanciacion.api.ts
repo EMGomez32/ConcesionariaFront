@@ -30,9 +30,14 @@ export interface SolicitudFinanciacion {
 export interface SolicitudArchivo {
     id: number;
     solicitudId: number;
-    tipo?: string;
+    tipo?: string | null;
     url: string;
-    descripcion?: string;
+    descripcion?: string | null;
+    originalName?: string | null;
+    mimeType?: string | null;
+    sizeBytes?: number | null;
+    storageKey?: string | null;
+    uploadedById?: number | null;
     createdAt: string;
 }
 
@@ -72,6 +77,16 @@ const solicitudesFinanciacionApi = {
 
     delete: (id: number) =>
         apiClient.delete(`/financiacion-solicitudes/${id}`),
+
+    // Archivos adjuntos
+    listArchivos: (solicitudId: number) =>
+        apiClient.get<SolicitudArchivo[]>(`/financiacion-solicitudes/${solicitudId}/archivos`),
+
+    deleteArchivo: (solicitudId: number, archivoId: number) =>
+        apiClient.delete(`/financiacion-solicitudes/${solicitudId}/archivos/${archivoId}`),
+
+    /** Endpoint multipart usado por el componente <FileUploader>. */
+    uploadEndpoint: (solicitudId: number) => `/financiacion-solicitudes/${solicitudId}/archivos/upload`,
 };
 
 export default solicitudesFinanciacionApi;

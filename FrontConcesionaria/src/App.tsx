@@ -26,16 +26,7 @@ import FinanciacionExternaPage from './pages/solicitudes/FinanciacionExternaPage
 import PostventaPage from './pages/postventa/PostventaPage';
 import AuditoriaPage from './pages/auditoria/AuditoriaPage';
 import BillingPage from './pages/billing/BillingPage';
-
-// Placeholder de páginas que se implementarán luego
-const Placeholder = ({ name }: { name: string }) => (
-  <div className="glass" style={{ padding: '2rem', borderRadius: '1rem' }}>
-    <h2>Módulo: {name}</h2>
-    <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>
-      Este módulo está en construcción como parte del plan de desarrollo.
-    </p>
-  </div>
-);
+import ConfiguracionPage from './pages/configuracion/ConfiguracionPage';
 
 function App() {
   return (
@@ -92,7 +83,7 @@ function App() {
             <Route path="/postventa" element={<PostventaPage />} />
             <Route path="/auditoria" element={<AuditoriaPage />} />
             <Route path="/billing" element={<BillingPage />} />
-            <Route path="/configuracion" element={<Placeholder name="Ajustes" />} />
+            <Route path="/configuracion" element={<ConfiguracionPage />} />
           </Route>
         </Route>
 

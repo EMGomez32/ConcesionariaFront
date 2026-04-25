@@ -11,6 +11,7 @@ import type { Sucursal } from '../../types/sucursal.types';
 import DataTable, { type Column } from '../../components/ui/DataTable';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import { FileUploader } from '../../components/ui/FileUploader';
 import { useUIStore } from '../../store/uiStore';
 import {
     ArrowLeft, Car, Calendar, DollarSign, MapPin,
@@ -83,9 +84,8 @@ const VehiculoDetallePage = () => {
     const [deletingGastoId, setDeletingGastoId] = useState<number | null>(null);
 
     const [showArchivoForm, setShowArchivoForm] = useState(false);
-    const [savingArchivo, setSavingArchivo] = useState(false);
-    const [archivoForm, setArchivoForm] = useState({ url: '', nombre: '', tipo: 'foto', descripcion: '' });
-    const [archivoFormError, setArchivoFormError] = useState('');
+    const [archivoTipo, setArchivoTipo] = useState('foto');
+    const [archivoDescripcion, setArchivoDescripcion] = useState('');
 
     useEffect(() => {
         if (!id) return;
@@ -228,33 +228,17 @@ const VehiculoDetallePage = () => {
         }
     };
 
-    const handleAddArchivo = async () => {
-        if (!archivoForm.url.trim()) { setArchivoFormError('La URL es obligatoria'); return; }
-        if (!archivoForm.nombre.trim()) { setArchivoFormError('El nombre es obligatorio'); return; }
-        setArchivoFormError('');
-        setSavingArchivo(true);
-        try {
-            await vehiculoArchivosApi.create({
-                vehiculoId: Number(id),
-                url: archivoForm.url.trim(),
-                nombre: archivoForm.nombre.trim(),
-                tipo: archivoForm.tipo,
-                descripcion: archivoForm.descripcion.trim() || undefined,
-            });
-            addToast('Archivo agregado correctamente', 'success');
-            setArchivoForm({ url: '', nombre: '', tipo: 'foto', descripcion: '' });
-            setShowArchivoForm(false);
-            loadArchivos();
-        } catch (err: unknown) {
-            const apiError = err as ApiError;
-            addToast(apiError?.message || 'Error al agregar archivo', 'error');
-        } finally {
-            setSavingArchivo(false);
-        }
+    const handleArchivoUploaded = () => {
+        addToast('Archivo subido correctamente', 'success');
+        setArchivoTipo('foto');
+        setArchivoDescripcion('');
+        setShowArchivoForm(false);
+        loadArchivos();
     };
 
     const handleDeleteArchivo = async (archivo: VehiculoArchivo) => {
-        if (!window.confirm(`¿Eliminar el archivo "${archivo.nombre}"?`)) return;
+        const label = archivo.originalName ?? archivo.descripcion ?? `Archivo ${archivo.id}`;
+        if (!window.confirm(`¿Eliminar el archivo "${label}"?`)) return;
         try {
             await vehiculoArchivosApi.delete(archivo.id);
             addToast('Archivo eliminado', 'success');
@@ -538,7 +522,7 @@ const VehiculoDetallePage = () => {
                             <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>
                                 {archivos.length > 0 ? `${archivos.length} archivo${archivos.length !== 1 ? 's' : ''}` : 'Sin archivos'}
                             </h3>
-                            <Button variant="primary" size="sm" onClick={() => { setShowArchivoForm(v => !v); setArchivoFormError(''); }}>
+                            <Button variant="primary" size="sm" onClick={() => setShowArchivoForm(v => !v)}>
                                 {showArchivoForm ? <><X size={14} style={{ marginRight: '0.4rem' }} />Cancelar</> : <><Upload size={14} style={{ marginRight: '0.4rem' }} />Agregar archivo</>}
                             </Button>
                         </div>
@@ -549,31 +533,11 @@ const VehiculoDetallePage = () => {
                                 <h4 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Nuevo archivo</h4>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     <div>
-                                        <label className="form-label">URL del archivo *</label>
-                                        <input
-                                            type="url"
-                                            className="form-input"
-                                            placeholder="https://..."
-                                            value={archivoForm.url}
-                                            onChange={e => setArchivoForm(f => ({ ...f, url: e.target.value }))}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="form-label">Nombre *</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="Ej: Foto frontal"
-                                            value={archivoForm.nombre}
-                                            onChange={e => setArchivoForm(f => ({ ...f, nombre: e.target.value }))}
-                                        />
-                                    </div>
-                                    <div>
                                         <label className="form-label">Tipo</label>
                                         <select
                                             className="form-input"
-                                            value={archivoForm.tipo}
-                                            onChange={e => setArchivoForm(f => ({ ...f, tipo: e.target.value }))}
+                                            value={archivoTipo}
+                                            onChange={e => setArchivoTipo(e.target.value)}
                                         >
                                             {TIPO_ARCHIVO_OPTS.map(t => (
                                                 <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
@@ -586,17 +550,24 @@ const VehiculoDetallePage = () => {
                                             type="text"
                                             className="form-input"
                                             placeholder="Descripción opcional"
-                                            value={archivoForm.descripcion}
-                                            onChange={e => setArchivoForm(f => ({ ...f, descripcion: e.target.value }))}
+                                            value={archivoDescripcion}
+                                            onChange={e => setArchivoDescripcion(e.target.value)}
                                         />
                                     </div>
                                 </div>
-                                {archivoFormError && <p style={{ color: '#ef4444', fontSize: '0.8rem' }}>{archivoFormError}</p>}
-                                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                                    <Button variant="secondary" size="sm" onClick={() => { setShowArchivoForm(false); setArchivoFormError(''); }}>Cancelar</Button>
-                                    <Button variant="primary" size="sm" onClick={handleAddArchivo} disabled={savingArchivo}>
-                                        {savingArchivo ? 'Guardando...' : <><Plus size={14} style={{ marginRight: '0.4rem' }} />Guardar archivo</>}
-                                    </Button>
+                                <FileUploader
+                                    endpoint={vehiculoArchivosApi.uploadEndpoint}
+                                    extraFields={{
+                                        vehiculoId: Number(id),
+                                        tipo: archivoTipo,
+                                        descripcion: archivoDescripcion.trim() || undefined,
+                                    }}
+                                    onUploaded={handleArchivoUploaded}
+                                    accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                                    label="Seleccionar archivo a subir"
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Button variant="secondary" size="sm" onClick={() => setShowArchivoForm(false)}>Cerrar</Button>
                                 </div>
                             </div>
                         )}
@@ -635,9 +606,12 @@ const VehiculoDetallePage = () => {
                                                                     <IconComp size={28} />
                                                                 </div>
                                                                 <div className="archivo-info">
-                                                                    <span className="archivo-nombre">{a.nombre}</span>
-                                                                    {a.descripcion && <span className="archivo-desc">{a.descripcion}</span>}
-                                                                    <span className="archivo-fecha">{a.createdAt ? new Date(a.createdAt).toLocaleDateString('es-AR') : ''}</span>
+                                                                    <span className="archivo-nombre">{a.originalName ?? a.descripcion ?? `Archivo ${a.id}`}</span>
+                                                                    {a.descripcion && a.originalName && <span className="archivo-desc">{a.descripcion}</span>}
+                                                                    <span className="archivo-fecha">
+                                                                        {a.createdAt ? new Date(a.createdAt).toLocaleDateString('es-AR') : ''}
+                                                                        {a.sizeBytes ? ` · ${(a.sizeBytes / 1024).toFixed(1)} KB` : ''}
+                                                                    </span>
                                                                 </div>
                                                                 <div className="archivo-actions">
                                                                     <a href={a.url} target="_blank" rel="noreferrer" className="icon-btn" title="Ver archivo">

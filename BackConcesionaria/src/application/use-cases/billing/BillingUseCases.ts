@@ -70,9 +70,14 @@ export class RegistrarPagoInvoice {
         const invoice = await this.repository.findInvoiceById(invoiceId);
         if (!invoice) throw new NotFoundException('Factura');
 
+        // HU-96: el pago se crea en `pending`. Solo si llega `succeeded`
+        // explícito (porque el callback del proveedor lo confirmó), se
+        // recalcula el saldo y eventualmente se marca la factura como `paid`.
+        const status = data.status ?? 'pending';
+
         const pago = await this.repository.createPayment({
             invoiceId,
-            status: 'succeeded',
+            status,
             monto: data.monto,
             moneda: data.moneda || invoice.moneda,
             metodo: data.metodo,
@@ -80,10 +85,11 @@ export class RegistrarPagoInvoice {
             providerPaymentId: data.providerPaymentId
         });
 
-        const totalPagado = await this.repository.aggregatePaymentsByInvoice(invoiceId);
-
-        if (totalPagado._sum.monto && Number(totalPagado._sum.monto) >= Number(invoice.total)) {
-            await this.repository.updateInvoice(invoiceId, { status: 'paid', paidAt: new Date() });
+        if (status === 'succeeded') {
+            const totalPagado = await this.repository.aggregatePaymentsByInvoice(invoiceId);
+            if (totalPagado._sum.monto && Number(totalPagado._sum.monto) >= Number(invoice.total)) {
+                await this.repository.updateInvoice(invoiceId, { status: 'paid', paidAt: new Date() });
+            }
         }
 
         return pago;

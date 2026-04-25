@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { presupuestosApi } from '../../api/presupuestos.api';
 import { clientesApi } from '../../api/clientes.api';
 import { usuariosApi } from '../../api/usuarios.api';
 import { sucursalesApi } from '../../api/sucursales.api';
 import { vehiculosApi } from '../../api/vehiculos.api';
+import client from '../../api/client';
 import type { EstadoPresupuesto } from '../../types/presupuesto.types';
+import type { FormaPagoVenta } from '../../types/venta.types';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import { useUIStore } from '../../store/uiStore';
@@ -12,8 +15,17 @@ import {
     Plus, Search, Eye, Pencil, Trash2, X, ChevronLeft, ChevronRight,
     SendHorizonal, CheckCircle, XCircle, Clock, FileText, Car,
     ArrowRightLeft, DollarSign, Calendar, User,
-    MapPin, Hash, RefreshCw, Briefcase, Calculator
+    MapPin, Hash, RefreshCw, Briefcase, Calculator, ArrowRight
 } from 'lucide-react';
+
+const FORMA_PAGO_OPTIONS_CONV: { value: FormaPagoVenta; label: string }[] = [
+    { value: 'contado', label: 'Contado / Efectivo' },
+    { value: 'transferencia', label: 'Transferencia Bancaria' },
+    { value: 'financiado_propio', label: 'Financiación Interna' },
+    { value: 'financiado_externo', label: 'Crédito Prendario / UVA' },
+    { value: 'canje_mas_diferencia', label: 'Canje + Saldo' },
+    { value: 'mixto', label: 'Pago Mixto' },
+];
 
 /* ── helpers ── */
 const today = () => new Date().toISOString().slice(0, 10);
@@ -62,6 +74,38 @@ const blankForm = () => ({
 
 const PresupuestosPage = () => {
     const { addToast } = useUIStore();
+    const navigate = useNavigate();
+
+    /* ── convertir en venta ── */
+    const [convertirId, setConvertirId] = useState<number | null>(null);
+    const [convertirForm, setConvertirForm] = useState({
+        formaPago: 'contado' as FormaPagoVenta,
+        moneda: 'ARS' as 'ARS' | 'USD',
+        fechaVenta: new Date().toISOString().slice(0, 10),
+        observaciones: '',
+    });
+    const [convertirSaving, setConvertirSaving] = useState(false);
+
+    const handleConvertirEnVenta = async () => {
+        if (!convertirId) return;
+        setConvertirSaving(true);
+        try {
+            await client.post(`/presupuestos/${convertirId}/convertir-en-venta`, {
+                formaPago: convertirForm.formaPago,
+                fechaVenta: convertirForm.fechaVenta,
+                moneda: convertirForm.moneda,
+                ...(convertirForm.observaciones && { observaciones: convertirForm.observaciones }),
+            });
+            addToast('Venta creada con éxito', 'success');
+            setConvertirId(null);
+            navigate('/ventas');
+        } catch (err: unknown) {
+            const e = err as { message?: string; code?: string };
+            addToast(e?.message || 'Error al convertir el presupuesto', 'error');
+        } finally {
+            setConvertirSaving(false);
+        }
+    };
 
     /* ── data ── */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -456,6 +500,21 @@ const PresupuestosPage = () => {
                                                     {t.icon}
                                                 </button>
                                             ))}
+                                            {p.estado === 'aceptado' && (
+                                                <button className="icon-btn" title="Convertir en venta"
+                                                    style={{ color: '#22c55e' }}
+                                                    onClick={() => {
+                                                        setConvertirId(Number(p.id));
+                                                        setConvertirForm({
+                                                            formaPago: 'contado',
+                                                            moneda: (p.moneda as 'ARS' | 'USD') || 'ARS',
+                                                            fechaVenta: new Date().toISOString().slice(0, 10),
+                                                            observaciones: '',
+                                                        });
+                                                    }}>
+                                                    <ArrowRight size={16} />
+                                                </button>
+                                            )}
                                             <button className="icon-btn" title="Ver Expediente" onClick={() => setDetailId(p.id)}><Eye size={16} /></button>
                                             <button className="icon-btn" title="Editar Metadatos" onClick={() => openEdit(p)}><Pencil size={16} /></button>
                                             <button className="icon-btn danger" title="Anular" onClick={() => setDeleteId(p.id)}><Trash2 size={16} /></button>
@@ -768,6 +827,53 @@ const PresupuestosPage = () => {
                         <footer className="modal-footer">
                             <Button variant="secondary" onClick={() => setEditId(null)}>Desistir</Button>
                             <Button variant="primary" className="flex-1" onClick={handleEdit} loading={saving}>Acreditar Cambios</Button>
+                        </footer>
+                    </div>
+                </div>
+            )}
+
+            {/* CONVERTIR EN VENTA MODAL */}
+            {convertirId !== null && (
+                <div className="modal-overlay" onClick={() => setConvertirId(null)}>
+                    <div className="modal-box" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
+                        <header className="modal-header">
+                            <h2 className="text-2xl font-black">Convertir en Venta</h2>
+                            <p className="text-sm text-muted">Definí los datos de cierre. El resto los toma del presupuesto.</p>
+                        </header>
+                        <div className="modal-body space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="form-group">
+                                    <label className="form-label">Forma de pago</label>
+                                    <select className="form-input" value={convertirForm.formaPago}
+                                        onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
+                                        {FORMA_PAGO_OPTIONS_CONV.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Moneda</label>
+                                    <select className="form-input" value={convertirForm.moneda}
+                                        onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+                                        <option value="ARS">ARS</option>
+                                        <option value="USD">USD</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Fecha venta</label>
+                                <input type="date" className="form-input" value={convertirForm.fechaVenta}
+                                    onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Observaciones</label>
+                                <textarea className="form-input" rows={3} value={convertirForm.observaciones}
+                                    onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))} />
+                            </div>
+                        </div>
+                        <footer className="modal-footer">
+                            <Button variant="secondary" onClick={() => setConvertirId(null)}>Cancelar</Button>
+                            <Button variant="primary" className="flex-1" onClick={handleConvertirEnVenta} loading={convertirSaving}>
+                                <ArrowRight size={16} className="mr-2" /> Crear venta
+                            </Button>
                         </footer>
                     </div>
                 </div>

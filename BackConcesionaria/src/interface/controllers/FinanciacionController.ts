@@ -4,6 +4,7 @@ import { GetFinanciaciones } from '../../application/use-cases/financiaciones/Ge
 import { GetFinanciacionById } from '../../application/use-cases/financiaciones/GetFinanciacionById';
 import { CreateFinanciacion } from '../../application/use-cases/financiaciones/CreateFinanciacion';
 import { UpdateFinanciacion } from '../../application/use-cases/financiaciones/UpdateFinanciacion';
+import { DeleteFinanciacion } from '../../application/use-cases/financiaciones/DeleteFinanciacion';
 import { RegistrarPagoCuota } from '../../application/use-cases/financiaciones/RegistrarPagoCuota';
 import { audit } from '../../infrastructure/security/audit';
 
@@ -12,6 +13,7 @@ const getFinanciacionesUC = new GetFinanciaciones(repository);
 const getFinanciacionByIdUC = new GetFinanciacionById(repository);
 const createFinanciacionUC = new CreateFinanciacion(repository);
 const updateFinanciacionUC = new UpdateFinanciacion(repository);
+const deleteFinanciacionUC = new DeleteFinanciacion(repository);
 const registrarPagoUC = new RegistrarPagoCuota(repository);
 
 export class FinanciacionController {
@@ -61,6 +63,22 @@ export class FinanciacionController {
                 detalle: `Financiacion ${id} actualizada`,
             });
             res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async delete(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            await deleteFinanciacionUC.execute(id);
+            await audit({
+                entidad: 'Financiacion',
+                accion: 'delete_soft',
+                entidadId: id,
+                detalle: `Financiacion ${id} eliminada`,
+            });
+            res.status(204).send();
         } catch (error) {
             next(error);
         }

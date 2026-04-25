@@ -40,12 +40,10 @@ export class PrismaSolicitudFinanciacionRepository implements ISolicitudFinancia
     }
 
     async create(data: any): Promise<SolicitudFinanciacion> {
-        const s = await prisma.solicitudFinanciacion.create({
-            data: {
-                ...data,
-                estado: 'pendiente'
-            }
-        });
+        // Schema default for estado is 'borrador'. The state machine for
+        // solicitudFinanciacion enforces transitions starting from 'borrador',
+        // so we let the DB default win unless the caller explicitly overrides.
+        const s = await prisma.solicitudFinanciacion.create({ data });
         return this.mapToEntity(s);
     }
 

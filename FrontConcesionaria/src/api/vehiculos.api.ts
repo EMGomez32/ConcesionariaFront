@@ -26,12 +26,9 @@ export const vehiculosApi = {
     },
 
     transferir: (vehiculoId: number, sucursalDestinoId: number, motivo?: string) => {
-        return client.post<unknown>('/vehiculo-movimientos', {
-            vehiculoId,
-            tipo: 'traslado',
+        return client.post<Vehiculo>(`/vehiculos/${vehiculoId}/transferir`, {
             sucursalDestinoId,
-            motivo: motivo || 'Traslado entre sucursales',
-            fecha: new Date().toISOString(),
+            motivo,
         });
     },
 

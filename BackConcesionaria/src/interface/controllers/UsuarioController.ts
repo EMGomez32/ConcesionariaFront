@@ -5,6 +5,7 @@ import { GetUsuarioById } from '../../application/use-cases/usuarios/GetUsuarioB
 import { CreateUsuario } from '../../application/use-cases/usuarios/CreateUsuario';
 import { UpdateUsuario } from '../../application/use-cases/usuarios/UpdateUsuario';
 import { DeleteUsuario } from '../../application/use-cases/usuarios/DeleteUsuario';
+import { ResetPassword } from '../../application/use-cases/usuarios/ResetPassword';
 import { cleanFilters } from '../../utils/cleanFilters';
 import { audit } from '../../infrastructure/security/audit';
 
@@ -14,6 +15,7 @@ const getUsuarioByIdUC = new GetUsuarioById(repository);
 const createUsuarioUC = new CreateUsuario(repository);
 const updateUsuarioUC = new UpdateUsuario(repository);
 const deleteUsuarioUC = new DeleteUsuario(repository);
+const resetPasswordUC = new ResetPassword(repository);
 
 export class UsuarioController {
     static async getAll(req: Request, res: Response, next: NextFunction) {
@@ -76,6 +78,23 @@ export class UsuarioController {
                 accion: 'delete_soft',
                 entidadId: id,
                 detalle: `Usuario ${id} eliminado`,
+            });
+            res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async resetPassword(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const { password } = req.body ?? {};
+            await resetPasswordUC.execute(id, password);
+            await audit({
+                entidad: 'Usuario',
+                accion: 'update',
+                entidadId: id,
+                detalle: `Reset de contraseña para usuario ${id}`,
             });
             res.status(204).send();
         } catch (error) {

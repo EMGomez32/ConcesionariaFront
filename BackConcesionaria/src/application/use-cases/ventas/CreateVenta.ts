@@ -21,11 +21,11 @@ export class CreateVenta {
         // We can use the Prisma transaction here.
         // In a more pure Clean Architecture, we'd use a UnitOfWork.
         return prisma.$transaction(async (tx) => {
-            // 1. Create venta
+            // 1. Create venta. Note: schema has no `estado` field on Venta —
+            // estadoEntrega defaults to 'pendiente' in the database.
             const venta = await tx.venta.create({
                 data: {
                     ...ventaData,
-                    estado: 'finalizada',
                     concesionariaId: vehiculo.concesionariaId, // Multi-tenancy inherited from vehicle
                     presupuestoId,
                     extras: { create: externos || [] },

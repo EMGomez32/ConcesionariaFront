@@ -2,14 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Plus, Search, X, ChevronLeft, ChevronRight,
     Building2, FileText, CheckCircle,
-    Eye, Trash2, Edit, ArrowRight
+    Eye, Trash2, Edit, ArrowRight, ExternalLink, Paperclip
 } from 'lucide-react';
 import financierasApi from '../../api/financieras.api';
 import type { Financiera, CreateFinancieraDto } from '../../api/financieras.api';
 import solicitudesFinanciacionApi from '../../api/solicitudesFinanciacion.api';
-import type { SolicitudFinanciacion, CreateSolicitudDto, UpdateSolicitudDto, EstadoSolicitud } from '../../api/solicitudesFinanciacion.api';
+import type { SolicitudFinanciacion, SolicitudArchivo, CreateSolicitudDto, UpdateSolicitudDto, EstadoSolicitud } from '../../api/solicitudesFinanciacion.api';
 import { clientesApi } from '../../api/clientes.api';
 import { useUIStore } from '../../store/uiStore';
+import { FileUploader } from '../../components/ui/FileUploader';
 
 // ─── Estado mappings ──────────────────────────────────────────────────────────
 const ESTADO_SOL_LABELS: Record<EstadoSolicitud, string> = {
@@ -94,6 +95,8 @@ export default function FinanciacionExternaPage() {
     // SOLICITUDES modals
     const [showSolModal, setShowSolModal] = useState(false);
     const [detailSolicitud, setDetailSolicitud] = useState<SolicitudFinanciacion | null>(null);
+    const [archivosSol, setArchivosSol] = useState<SolicitudArchivo[]>([]);
+    const [loadingArchivosSol, setLoadingArchivosSol] = useState(false);
     const [deletingSol, setDeletingSol] = useState<SolicitudFinanciacion | null>(null);
     const [transicionSol, setTransicionSol] = useState<SolicitudFinanciacion | null>(null);
     const [nuevoEstado, setNuevoEstado] = useState<EstadoSolicitud | ''>('');
@@ -150,6 +153,38 @@ export default function FinanciacionExternaPage() {
             setLoadingSol(false);
         }
     }, [page, filterEstado, filterFinanciera, addToast]);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ARCHIVOS DE SOLICITUD
+    // ─────────────────────────────────────────────────────────────────────────
+    const loadArchivosSol = useCallback(async (solicitudId: number) => {
+        setLoadingArchivosSol(true);
+        try {
+            const res = await solicitudesFinanciacionApi.listArchivos(solicitudId);
+            setArchivosSol(Array.isArray(res) ? res : []);
+        } catch {
+            addToast('Error al cargar archivos', 'error');
+        } finally {
+            setLoadingArchivosSol(false);
+        }
+    }, [addToast]);
+
+    useEffect(() => {
+        if (detailSolicitud) loadArchivosSol(detailSolicitud.id);
+        else setArchivosSol([]);
+    }, [detailSolicitud, loadArchivosSol]);
+
+    const handleDeleteArchivoSol = async (archivo: SolicitudArchivo) => {
+        const label = archivo.originalName ?? archivo.descripcion ?? `Archivo ${archivo.id}`;
+        if (!detailSolicitud || !window.confirm(`¿Eliminar el archivo "${label}"?`)) return;
+        try {
+            await solicitudesFinanciacionApi.deleteArchivo(detailSolicitud.id, archivo.id);
+            addToast('Archivo eliminado', 'success');
+            setArchivosSol(prev => prev.filter(a => a.id !== archivo.id));
+        } catch {
+            addToast('Error al eliminar archivo', 'error');
+        }
+    };
 
     // ─────────────────────────────────────────────────────────────────────────
     // LOAD CATALOGS
@@ -689,6 +724,57 @@ export default function FinanciacionExternaPage() {
                             <strong>Observaciones:</strong> {detailSolicitud.observaciones}
                         </div>
                     )}
+
+                    {/* ─── Archivos adjuntos ─── */}
+                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <Paperclip size={16} style={{ color: 'var(--text-secondary)' }} />
+                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                                Archivos adjuntos {archivosSol.length > 0 && `(${archivosSol.length})`}
+                            </h3>
+                        </div>
+
+                        {loadingArchivosSol ? (
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Cargando...</p>
+                        ) : archivosSol.length === 0 ? (
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Sin archivos adjuntos.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                                {archivosSol.map(a => (
+                                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem' }}>
+                                        <FileText size={16} style={{ color: 'var(--text-secondary)' }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {a.originalName ?? a.descripcion ?? `Archivo ${a.id}`}
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                {a.tipo && <>{a.tipo} · </>}
+                                                {a.sizeBytes ? `${(a.sizeBytes / 1024).toFixed(1)} KB · ` : ''}
+                                                {fmtDate(a.createdAt)}
+                                            </div>
+                                        </div>
+                                        <a href={a.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', padding: '0.25rem' }} title="Ver">
+                                            <ExternalLink size={14} />
+                                        </a>
+                                        <button onClick={() => handleDeleteArchivoSol(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.25rem' }} title="Eliminar">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <FileUploader
+                            endpoint={solicitudesFinanciacionApi.uploadEndpoint(detailSolicitud.id)}
+                            extraFields={{ tipo: 'documento' }}
+                            onUploaded={() => {
+                                addToast('Archivo subido', 'success');
+                                loadArchivosSol(detailSolicitud.id);
+                            }}
+                            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                            label="Subir nuevo archivo"
+                        />
+                    </div>
 
                     {ESTADO_SOL_TRANSITIONS[detailSolicitud.estado].length > 0 && (
                         <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>

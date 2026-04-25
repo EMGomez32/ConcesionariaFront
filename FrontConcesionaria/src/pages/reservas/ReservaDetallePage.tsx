@@ -1,14 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { reservasApi, type Reserva, type EstadoReserva } from '../../api/reservas.api';
+import { ventasApi, type CreateVentaDto } from '../../api/ventas.api';
 import { useUIStore } from '../../store/uiStore';
+import { useAuthStore } from '../../store/authStore';
 import Badge, { type BadgeVariant } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import {
     ArrowLeft, Bookmark, Calendar, DollarSign,
     Car, Users, MapPin, RefreshCw, XCircle,
-    CheckCircle, Clock, User
+    CheckCircle, Clock, User, ShoppingBag
 } from 'lucide-react';
+import type { FormaPagoVenta } from '../../types/venta.types';
+
+const FORMA_PAGO_OPTIONS: { value: FormaPagoVenta; label: string }[] = [
+    { value: 'contado', label: 'Contado / Efectivo' },
+    { value: 'transferencia', label: 'Transferencia Bancaria' },
+    { value: 'financiado_propio', label: 'Financiación Interna' },
+    { value: 'financiado_externo', label: 'Crédito Prendario / UVA' },
+    { value: 'canje_mas_diferencia', label: 'Canje + Saldo' },
+    { value: 'mixto', label: 'Pago Mixto' },
+];
 
 const ESTADO_BADGE: Record<EstadoReserva, BadgeVariant> = {
     activa: 'success',
@@ -62,7 +74,17 @@ const ReservaDetallePage = () => {
     // Action modals
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showVencidaModal, setShowVencidaModal] = useState(false);
+    const [showConvertirModal, setShowConvertirModal] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+
+    // Convertir form state
+    const [convertirForm, setConvertirForm] = useState({
+        precioVenta: 0,
+        moneda: 'ARS' as 'ARS' | 'USD',
+        formaPago: 'contado' as FormaPagoVenta,
+        fechaVenta: new Date().toISOString().slice(0, 10),
+        observaciones: '',
+    });
 
     useEffect(() => {
         if (!id) return;
@@ -86,6 +108,43 @@ const ReservaDetallePage = () => {
             setShowCancelModal(false);
         } catch {
             addToast('Error al cancelar reserva', 'error');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleConvertirEnVenta = async () => {
+        if (!reserva) return;
+        const vendedorId = useAuthStore.getState().user?.id;
+        if (!vendedorId) {
+            addToast('No se pudo determinar el usuario actual', 'error');
+            return;
+        }
+        if (convertirForm.precioVenta <= 0) {
+            addToast('El precio de venta debe ser mayor a 0', 'error');
+            return;
+        }
+        setActionLoading(true);
+        try {
+            const dto: CreateVentaDto = {
+                reservaId: reserva.id,
+                vehiculoId: reserva.vehiculoId,
+                clienteId: reserva.clienteId,
+                sucursalId: reserva.sucursalId,
+                vendedorId,
+                precioVenta: Number(convertirForm.precioVenta),
+                moneda: convertirForm.moneda,
+                formaPago: convertirForm.formaPago,
+                fechaVenta: convertirForm.fechaVenta,
+                ...(convertirForm.observaciones && { observaciones: convertirForm.observaciones }),
+            };
+            await ventasApi.create(dto);
+            addToast('Venta creada con éxito', 'success');
+            setShowConvertirModal(false);
+            navigate('/ventas');
+        } catch (err: unknown) {
+            const e = err as { message?: string };
+            addToast(e?.message || 'Error al convertir la reserva en venta', 'error');
         } finally {
             setActionLoading(false);
         }
@@ -159,6 +218,18 @@ const ReservaDetallePage = () => {
                                 <Clock size={14} style={{ marginRight: '0.4rem' }} /> Marcar vencida
                             </Button>
                         )}
+                        <Button variant="primary" size="sm" onClick={() => {
+                            setConvertirForm({
+                                precioVenta: Number(reserva.monto) || 0,
+                                moneda: reserva.moneda,
+                                formaPago: 'contado',
+                                fechaVenta: new Date().toISOString().slice(0, 10),
+                                observaciones: '',
+                            });
+                            setShowConvertirModal(true);
+                        }}>
+                            <ShoppingBag size={14} style={{ marginRight: '0.4rem' }} /> Convertir en venta
+                        </Button>
                         <Button variant="danger" size="sm" onClick={() => setShowCancelModal(true)}>
                             <XCircle size={14} style={{ marginRight: '0.4rem' }} /> Cancelar reserva
                         </Button>
@@ -250,6 +321,60 @@ const ReservaDetallePage = () => {
                             <Button variant="secondary" onClick={() => setShowCancelModal(false)}>Volver</Button>
                             <Button variant="danger" onClick={handleCancel} disabled={actionLoading}>
                                 {actionLoading ? 'Cancelando...' : 'Cancelar reserva'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Convertir en Venta Modal */}
+            {showConvertirModal && (
+                <div className="modal-overlay" onClick={() => setShowConvertirModal(false)}>
+                    <div className="modal glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+                        <div className="modal-header">
+                            <h3>Convertir Reserva #{reserva.id} en Venta</h3>
+                            <button className="icon-btn" onClick={() => setShowConvertirModal(false)}><XCircle size={18} /></button>
+                        </div>
+                        <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Precio venta *</label>
+                                    <input type="number" className="form-input" value={convertirForm.precioVenta || ''}
+                                        onChange={e => setConvertirForm(f => ({ ...f, precioVenta: +e.target.value }))} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Moneda</label>
+                                    <select className="form-input" value={convertirForm.moneda}
+                                        onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+                                        <option value="ARS">ARS</option>
+                                        <option value="USD">USD</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Forma de pago</label>
+                                    <select className="form-input" value={convertirForm.formaPago}
+                                        onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
+                                        {FORMA_PAGO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Fecha venta</label>
+                                    <input type="date" className="form-input" value={convertirForm.fechaVenta}
+                                        onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Observaciones</label>
+                                <textarea className="form-input" rows={3} value={convertirForm.observaciones}
+                                    onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)' }}>
+                            <Button variant="secondary" onClick={() => setShowConvertirModal(false)}>Cancelar</Button>
+                            <Button variant="primary" onClick={handleConvertirEnVenta} disabled={actionLoading}>
+                                {actionLoading ? 'Creando...' : 'Crear venta'}
                             </Button>
                         </div>
                     </div>

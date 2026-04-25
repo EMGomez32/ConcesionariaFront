@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { FormaPagoVenta, EstadoEntrega, Venta } from '../../types/venta.types';
 import type { ApiError } from '../../types/api.types';
+import VentaSubResources from '../../components/ventas/VentaSubResources';
 
 // ─── Tipos auxiliares ──────────────────────────────────────────────────────
 interface PagoRow { monto: number; metodo: 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque' | 'otro'; referencia: string; observaciones: string }
@@ -723,6 +724,14 @@ const VentasPage = () => {
                                 "{detail.observaciones}"
                             </div>
                         )}
+
+                        {/* Sub-recursos: Pagos, Extras, Canjes */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <DollarSign size={14} className="text-accent" /> Gestión de Sub-recursos
+                            </h3>
+                            <VentaSubResources ventaId={detail.id} />
+                        </div>
                     </div>
                 )}
             </Modal>
