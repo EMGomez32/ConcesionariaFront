@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import Button from './Button';
 
 interface PaginationProps {
     currentPage: number;
@@ -12,52 +11,105 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
     if (totalPages <= 1) return null;
 
     return (
-        <div className="pagination-container flex items-center justify-center gap-6 mt-8">
-            <Button
-                variant="secondary"
-                size="sm"
+        <nav className="pager" aria-label="Paginación">
+            <button
+                type="button"
+                className="pager-btn"
                 disabled={currentPage <= 1}
                 onClick={() => onPageChange(currentPage - 1)}
-                className="rounded-xl border-white/5 bg-slate-900"
+                aria-label="Página anterior"
             >
-                <ChevronLeft size={16} className="mr-1" /> Anterior
-            </Button>
+                <ChevronLeft size={16} />
+                <span>Anterior</span>
+            </button>
 
-            <div className="flex items-center gap-2">
-                <span className="page-indicator w-10 h-10 bg-accent text-white rounded-xl flex items-center justify-center font-black text-sm shadow-lg shadow-accent/20">
-                    {currentPage}
-                </span>
-                <span className="text-muted text-xs font-bold uppercase tracking-widest px-2">
-                    de {totalPages}
-                </span>
+            <div className="pager-status">
+                <span className="pager-current">{currentPage}</span>
+                <span className="pager-divider">/</span>
+                <span className="pager-total">{totalPages}</span>
             </div>
 
-            <Button
-                variant="secondary"
-                size="sm"
+            <button
+                type="button"
+                className="pager-btn"
                 disabled={currentPage >= totalPages}
                 onClick={() => onPageChange(currentPage + 1)}
-                className="rounded-xl border-white/5 bg-slate-900"
+                aria-label="Página siguiente"
             >
-                Siguiente <ChevronRight size={16} className="ml-1" />
-            </Button>
+                <span>Siguiente</span>
+                <ChevronRight size={16} />
+            </button>
 
             <style>{`
-                .pagination-container {
-                    animation: fadeIn 0.5s ease-out;
+                .pager {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: var(--space-4);
+                    padding-top: var(--space-6);
                 }
-                .page-indicator {
-                    transition: transform 0.2s;
+
+                .pager-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    padding: 0.5rem 0.9rem;
+                    border-radius: var(--radius-pill);
+                    background: var(--bg-card);
+                    color: var(--text-secondary);
+                    border: 1px solid var(--border);
+                    font-family: var(--font-sans);
+                    font-size: var(--text-sm);
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: border-color var(--duration-base) var(--easing-soft),
+                                background var(--duration-base) var(--easing-soft),
+                                color var(--duration-base) var(--easing-soft),
+                                transform var(--duration-base) var(--easing-soft);
                 }
-                .page-indicator:hover {
-                    transform: scale(1.1);
+
+                .pager-btn:hover:not(:disabled) {
+                    border-color: var(--accent);
+                    color: var(--accent);
+                    background: var(--accent-light);
+                    transform: translateY(-1px);
                 }
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
+
+                .pager-btn:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }
+
+                .pager-status {
+                    display: inline-flex;
+                    align-items: baseline;
+                    gap: 0.4rem;
+                    padding: 0.4rem 0.9rem;
+                    border-radius: var(--radius-pill);
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--border);
+                    font-family: var(--font-display);
+                    font-variant-numeric: tabular-nums;
+                }
+
+                .pager-current {
+                    font-size: var(--text-md);
+                    font-weight: 700;
+                    color: var(--text-primary);
+                }
+
+                .pager-divider {
+                    color: var(--text-muted);
+                    font-weight: 500;
+                }
+
+                .pager-total {
+                    color: var(--text-muted);
+                    font-weight: 600;
+                    font-size: var(--text-sm);
                 }
             `}</style>
-        </div>
+        </nav>
     );
 };
 

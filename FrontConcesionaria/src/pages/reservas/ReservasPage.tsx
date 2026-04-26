@@ -9,9 +9,11 @@ import { usuariosApi } from '../../api/usuarios.api';
 import { useUIStore } from '../../store/uiStore';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
     Plus, Search, Filter, RefreshCw,
-    Bookmark, X, ChevronLeft, ChevronRight,
+    Bookmark, ChevronLeft, ChevronRight,
     Eye, XCircle
 } from 'lucide-react';
 
@@ -118,7 +120,7 @@ const ReservasPage = () => {
 
     useEffect(() => {
         loadReservas(page);
-    }, [page, filterEstado, filterSucursal, filterCliente]);
+    }, [page, loadReservas]);
 
     const handleClear = () => {
         setFilterEstado('');
@@ -320,117 +322,100 @@ const ReservasPage = () => {
                 </div>
             )}
 
-            {/* Create Modal */}
-            {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '620px', width: '95%' }}>
-                        <div className="modal-header">
-                            <h3>Nueva Reserva</h3>
-                            <button className="icon-btn" onClick={() => setShowModal(false)}><X size={18} /></button>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '1.5rem' }}>
-                            {/* Vehículo */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="form-label">Vehículo * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(solo publicados)</span></label>
-                                <select className="form-input" value={form.vehiculoId} onChange={e => setForm(f => ({ ...f, vehiculoId: e.target.value }))}>
-                                    <option value="">Seleccionar vehículo...</option>
-                                    {vehiculos.map(v => (
-                                        <option key={v.id} value={v.id}>
-                                            {v.marca} {v.modelo} {v.version ? `${v.version} ` : ''}{v.dominio ? `(${v.dominio})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Cliente */}
-                            <div>
-                                <label className="form-label">Cliente *</label>
-                                <select className="form-input" value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}>
-                                    <option value="">Seleccionar cliente...</option>
-                                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                                </select>
-                            </div>
-
-                            {/* Vendedor */}
-                            <div>
-                                <label className="form-label">Vendedor *</label>
-                                <select className="form-input" value={form.vendedorId} onChange={e => setForm(f => ({ ...f, vendedorId: e.target.value }))}>
-                                    <option value="">Seleccionar vendedor...</option>
-                                    {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-                                </select>
-                            </div>
-
-                            {/* Sucursal */}
-                            <div>
-                                <label className="form-label">Sucursal *</label>
-                                <select className="form-input" value={form.sucursalId} onChange={e => setForm(f => ({ ...f, sucursalId: e.target.value }))}>
-                                    <option value="">Seleccionar sucursal...</option>
-                                    {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                                </select>
-                            </div>
-
-                            {/* Fecha vencimiento */}
-                            <div>
-                                <label className="form-label">Fecha de vencimiento *</label>
-                                <input type="date" className="form-input" value={form.fechaVencimiento} onChange={e => setForm(f => ({ ...f, fechaVencimiento: e.target.value }))} />
-                            </div>
-
-                            {/* Monto */}
-                            <div>
-                                <label className="form-label">Monto de seña *</label>
-                                <input type="number" className="form-input" placeholder="0" value={form.monto} onChange={e => setForm(f => ({ ...f, monto: e.target.value }))} />
-                            </div>
-
-                            {/* Moneda */}
-                            <div>
-                                <label className="form-label">Moneda *</label>
-                                <select className="form-input" value={form.moneda} onChange={e => setForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
-                                    <option value="ARS">ARS</option>
-                                    <option value="USD">USD</option>
-                                </select>
-                            </div>
-
-                            {/* Observaciones */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="form-label">Observaciones</label>
-                                <textarea className="form-input" rows={3} placeholder="Observaciones opcionales..." value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))} />
-                            </div>
-                        </div>
-
-                        {formError && <p style={{ color: '#ef4444', fontSize: '0.85rem', padding: '0 1.5rem', marginBottom: '1rem' }}>{formError}</p>}
-
-                        <div className="modal-footer">
-                            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
-                            <Button variant="primary" onClick={handleSubmit} disabled={saving}>
-                                {saving ? 'Guardando...' : <><Plus size={14} style={{ marginRight: '0.4rem' }} />Crear Reserva</>}
-                            </Button>
-                        </div>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="Nueva Reserva"
+                maxWidth="620px"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+                        <Button variant="primary" onClick={handleSubmit} loading={saving}>
+                            <Plus size={14} />
+                            Crear Reserva
+                        </Button>
+                    </>
+                }
+            >
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <label className="form-label">Vehículo * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(solo publicados)</span></label>
+                        <select className="form-input" value={form.vehiculoId} onChange={e => setForm(f => ({ ...f, vehiculoId: e.target.value }))}>
+                            <option value="">Seleccionar vehículo...</option>
+                            {vehiculos.map(v => (
+                                <option key={v.id} value={v.id}>
+                                    {v.marca} {v.modelo} {v.version ? `${v.version} ` : ''}{v.dominio ? `(${v.dominio})` : ''}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                </div>
-            )}
 
-            {/* Cancel Confirm Modal */}
-            {cancelingId !== null && (
-                <div className="modal-overlay" onClick={() => setCancelingId(null)}>
-                    <div className="modal glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
-                        <div className="modal-header">
-                            <h3>Cancelar Reserva</h3>
-                            <button className="icon-btn" onClick={() => setCancelingId(null)}><X size={18} /></button>
-                        </div>
-                        <p style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)' }}>
-                            ¿Confirmar cancelación de la reserva <strong>#{cancelingId}</strong>?<br />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>El vehículo volverá a estado "Publicado".</span>
-                        </p>
-                        <div className="modal-footer">
-                            <Button variant="secondary" onClick={() => setCancelingId(null)}>Volver</Button>
-                            <Button variant="danger" onClick={handleCancel} disabled={cancelLoading}>
-                                {cancelLoading ? 'Cancelando...' : 'Confirmar cancelación'}
-                            </Button>
-                        </div>
+                    <div>
+                        <label className="form-label">Cliente *</label>
+                        <select className="form-input" value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}>
+                            <option value="">Seleccionar cliente...</option>
+                            {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        </select>
                     </div>
+
+                    <div>
+                        <label className="form-label">Vendedor *</label>
+                        <select className="form-input" value={form.vendedorId} onChange={e => setForm(f => ({ ...f, vendedorId: e.target.value }))}>
+                            <option value="">Seleccionar vendedor...</option>
+                            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="form-label">Sucursal *</label>
+                        <select className="form-input" value={form.sucursalId} onChange={e => setForm(f => ({ ...f, sucursalId: e.target.value }))}>
+                            <option value="">Seleccionar sucursal...</option>
+                            {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="form-label">Fecha de vencimiento *</label>
+                        <input type="date" className="form-input" value={form.fechaVencimiento} onChange={e => setForm(f => ({ ...f, fechaVencimiento: e.target.value }))} />
+                    </div>
+
+                    <div>
+                        <label className="form-label">Monto de seña *</label>
+                        <input type="number" className="form-input" placeholder="0" value={form.monto} onChange={e => setForm(f => ({ ...f, monto: e.target.value }))} />
+                    </div>
+
+                    <div>
+                        <label className="form-label">Moneda *</label>
+                        <select className="form-input" value={form.moneda} onChange={e => setForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+                            <option value="ARS">ARS</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <label className="form-label">Observaciones</label>
+                        <textarea className="form-input" rows={3} placeholder="Observaciones opcionales..." value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))} />
+                    </div>
+
+                    {formError && (
+                        <div className="uploader-alert uploader-alert-error" style={{ gridColumn: '1 / -1' }}>
+                            <span>{formError}</span>
+                        </div>
+                    )}
                 </div>
-            )}
+            </Modal>
+
+            <ConfirmDialog
+                isOpen={cancelingId !== null}
+                title="Cancelar reserva"
+                message={`¿Confirmar cancelación de la reserva #${cancelingId}? El vehículo volverá a estado "Publicado".`}
+                confirmLabel="Confirmar cancelación"
+                cancelLabel="Volver"
+                type="danger"
+                onConfirm={handleCancel}
+                onCancel={() => setCancelingId(null)}
+                loading={cancelLoading}
+            />
 
             <style>{`
                 .filter-group { display: flex; flex-direction: column; gap: 0.3rem; }

@@ -5,4 +5,4 @@ export interface PaginationOptions {
     sortOrder?: 'asc' | 'desc';
 }
 
-export type QueryParams<T = any> = T & PaginationOptions;
+export type QueryParams<T = Record<string, unknown>> = T & PaginationOptions;

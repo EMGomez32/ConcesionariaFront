@@ -17,11 +17,11 @@ export interface ApiResponse<T> {
     success: boolean;
     data: T;
     message?: string;
-    errors?: any;
+    errors?: unknown;
 }
 
 export interface ApiError {
     success: boolean;
     message: string;
-    errors?: any;
+    errors?: unknown;
 }

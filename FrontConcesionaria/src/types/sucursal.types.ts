@@ -32,4 +32,4 @@ export interface CreateSucursalDto {
     activo?: boolean;
 }
 
-export interface UpdateSucursalDto extends Partial<CreateSucursalDto> { }
+export type UpdateSucursalDto = Partial<CreateSucursalDto>;

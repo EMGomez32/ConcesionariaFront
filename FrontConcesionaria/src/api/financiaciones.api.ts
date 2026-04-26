@@ -22,7 +22,7 @@ export interface PagarCuotaDto {
 }
 
 export const financiacionesApi = {
-    getAll: (filters: any = {}, options: PaginationOptions = {}) =>
+    getAll: (filters: Record<string, unknown> = {}, options: PaginationOptions = {}) =>
         client.get('/financiaciones', { params: { ...filters, ...options } }),
 
     getById: (id: number) =>

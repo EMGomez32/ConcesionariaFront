@@ -81,7 +81,7 @@ export interface CreatePlanDto {
   activo?: boolean;
 }
 
-export interface UpdatePlanDto extends Partial<CreatePlanDto> {}
+export type UpdatePlanDto = Partial<CreatePlanDto>;
 
 export interface UpdateSubscriptionDto {
   planId: number;

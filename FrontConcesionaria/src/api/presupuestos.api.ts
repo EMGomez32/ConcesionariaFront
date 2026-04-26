@@ -25,7 +25,7 @@ export interface CreatePresupuestoDto {
 }
 
 export const presupuestosApi = {
-    getAll: (filters: any = {}, options: PaginationOptions = {}) => {
+    getAll: (filters: Record<string, unknown> = {}, options: PaginationOptions = {}) => {
         return client.get<PaginatedResponse<Presupuesto>>('/presupuestos', {
             params: { ...filters, ...options },
         });

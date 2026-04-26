@@ -98,7 +98,7 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({ usuario, onSave, onCancel, lo
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData as any);
+        onSave(formData as unknown as CreateUsuarioDto | UpdateUsuarioDto);
     };
 
     if (loadingData) {

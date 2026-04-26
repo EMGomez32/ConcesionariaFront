@@ -9,15 +9,17 @@ import {
     Lock,
     Building2,
     Mail,
-    X
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usuariosApi } from '../../api/usuarios.api';
-import type { Usuario } from '../../types/usuario.types';
+import type { Usuario, CreateUsuarioDto, UpdateUsuarioDto } from '../../types/usuario.types';
 import { useUIStore } from '../../store/uiStore';
+import { getApiErrorMessage } from '../../utils/error';
 import UsuarioForm from '../../components/forms/UsuarioForm';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const UsuariosPage: React.FC = () => {
     const { addToast } = useUIStore();
@@ -27,13 +29,11 @@ const UsuariosPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
     const [submitting, setSubmitting] = useState(false);
-    const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
     const [resetPasswordUserId, setResetPasswordUserId] = useState<number | null>(null);
     const [newPassword, setNewPassword] = useState('');
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [resettingPassword, setResettingPassword] = useState(false);
     const [deletingUsuario, setDeletingUsuario] = useState<Usuario | null>(null);
 
-    // Queries
     const { data: response, isLoading: loading, isError: error } = useQuery({
         queryKey: ['usuarios', searchTerm],
         queryFn: async () => {
@@ -45,15 +45,14 @@ const UsuariosPage: React.FC = () => {
 
     const usuarios = useMemo(() => response?.results || [], [response]);
 
-    // Mutations
     const deleteMutation = useMutation({
         mutationFn: (id: number) => usuariosApi.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['usuarios'] });
             addToast('Usuario eliminado correctamente', 'success');
         },
-        onError: (error: any) => {
-            addToast(error?.message || 'Error al eliminar el usuario', 'error');
+        onError: (error) => {
+            addToast(getApiErrorMessage(error, 'Error al eliminar el usuario'), 'error');
         }
     });
 
@@ -67,51 +66,33 @@ const UsuariosPage: React.FC = () => {
         setEditingUsuario(null);
     };
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = async (data: CreateUsuarioDto | UpdateUsuarioDto) => {
         setSubmitting(true);
         try {
             if (editingUsuario) {
                 await usuariosApi.update(editingUsuario.id, data);
                 addToast('Usuario actualizado correctamente', 'success');
             } else {
-                await usuariosApi.create(data);
+                await usuariosApi.create(data as CreateUsuarioDto);
                 addToast('Usuario creado correctamente', 'success');
             }
             handleCloseModal();
             queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-        } catch (error: any) {
-            addToast(error?.error?.message || 'Error al guardar los datos', 'error');
+        } catch (error) {
+            addToast(getApiErrorMessage(error, 'Error al guardar los datos'), 'error');
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleDelete = (usuario: Usuario) => {
-        setDeletingUsuario(usuario);
-        setShowDeleteModal(true);
-    };
-
     const confirmDelete = () => {
         if (deletingUsuario) {
             deleteMutation.mutate(deletingUsuario.id);
-            setShowDeleteModal(false);
             setDeletingUsuario(null);
         }
     };
 
-    const cancelDelete = () => {
-        setShowDeleteModal(false);
-        setDeletingUsuario(null);
-    };
-
-    const openResetPasswordModal = (usuarioId: number) => {
-        setResetPasswordUserId(usuarioId);
-        setNewPassword('');
-        setShowResetPasswordModal(true);
-    };
-
     const closeResetPasswordModal = () => {
-        setShowResetPasswordModal(false);
         setResetPasswordUserId(null);
         setNewPassword('');
     };
@@ -121,126 +102,92 @@ const UsuariosPage: React.FC = () => {
             addToast('Debe ingresar una nueva contraseña', 'error');
             return;
         }
-
+        setResettingPassword(true);
         try {
             await usuariosApi.resetPassword(resetPasswordUserId, newPassword);
             addToast('Contraseña actualizada correctamente', 'success');
             closeResetPasswordModal();
-        } catch (error: any) {
-            addToast(error?.message || 'Error al actualizar la contraseña', 'error');
+        } catch (error) {
+            addToast(getApiErrorMessage(error, 'Error al actualizar la contraseña'), 'error');
+        } finally {
+            setResettingPassword(false);
         }
     };
 
     if (error) {
         return (
             <div className="page-container">
-                <div style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    color: 'var(--text-secondary)'
-                }}>
-                    Error al cargar los usuarios
+                <div className="dt-empty">
+                    <p className="dt-empty-text">Error al cargar los usuarios</p>
                 </div>
             </div>
         );
     }
 
-
     return (
         <div className="page-container">
-            {/* Header */}
             <div className="page-header">
                 <div className="page-title">
-                    <Users size={32} />
+                    <Users size={28} />
                     <div>
                         <h1>Usuarios</h1>
                         <p>Gestión de usuarios del sistema</p>
                     </div>
                 </div>
-                <button
-                    className="btn btn-primary"
-                    onClick={() => handleOpenModal()}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.75rem 1.5rem',
-                        background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-                        border: 'none',
-                        borderRadius: '12px',
-                        color: 'white',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.2)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-                    }}
-                >
-                    <UserPlus size={20} />
+                <Button variant="primary" onClick={() => handleOpenModal()}>
+                    <UserPlus size={18} />
                     Nuevo Usuario
-                </button>
+                </Button>
             </div>
 
-            {/* Filters */}
             <div className="filters-bar glass">
-                <div style={{ flex: 1, maxWidth: '400px', position: 'relative' }}>
-                    <Search
-                        size={20}
-                        style={{
-                            position: 'absolute',
-                            left: '12px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            color: 'var(--text-secondary)',
-                            pointerEvents: 'none'
-                        }}
-                    />
+                <div className="input-container has-icon" style={{ maxWidth: 400, flex: 1 }}>
+                    <span className="input-icon" aria-hidden="true"><Search size={16} /></span>
                     <input
                         type="text"
+                        className="input-control"
                         placeholder="Buscar por nombre o email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: '0.75rem 1rem 0.75rem 2.75rem',
-                            background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '10px',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.95rem',
-                            outline: 'none',
-                            transition: 'all 0.3s ease',
-                        }}
-                        onFocus={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--accent)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--accent-rgb), 0.1)';
-                        }}
-                        onBlur={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--border)';
-                            e.currentTarget.style.boxShadow = 'none';
-                        }}
                     />
                 </div>
             </div>
 
-            {/* Table */}
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                    Cargando usuarios...
+                <div className="table-container">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Email</th>
+                                <th>Sucursal</th>
+                                <th>Roles</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[1, 2, 3].map(i => (
+                                <tr key={i}>
+                                    {Array.from({ length: 6 }).map((_, idx) => (
+                                        <td key={idx} style={{ padding: '1.25rem 1rem' }}>
+                                            <span className="skeleton skeleton-text" style={{ width: '70%' }} />
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             ) : usuarios.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                    No se encontraron usuarios
+                <div className="table-container">
+                    <div className="dt-empty">
+                        <div className="dt-empty-badge"><Users size={36} /></div>
+                        <p className="dt-empty-text">No se encontraron usuarios.</p>
+                    </div>
                 </div>
             ) : (
-                <div className="table-container glass">
+                <div className="table-container">
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -255,7 +202,6 @@ const UsuariosPage: React.FC = () => {
                         <tbody>
                             {usuarios.map((usuario: Usuario) => (
                                 <tr key={usuario.id}>
-                                    {/* Usuario */}
                                     <td>
                                         <div className="user-cell">
                                             <div className="user-avatar">
@@ -265,95 +211,63 @@ const UsuariosPage: React.FC = () => {
                                                 <div className="user-name">{usuario.nombre}</div>
                                                 {usuario.concesionaria && (
                                                     <div className="user-location">
-                                                        <Building2 size={14} />
+                                                        <Building2 size={12} />
                                                         {usuario.concesionaria.nombre}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     </td>
-
-                                    {/* Email */}
                                     <td>
                                         <a href={`mailto:${usuario.email}`} className="contact-link">
-                                            <Mail size={16} />
+                                            <Mail size={14} />
                                             {usuario.email}
                                         </a>
                                     </td>
-
-                                    {/* Sucursal */}
+                                    <td>{usuario.sucursal?.nombre || '-'}</td>
                                     <td>
-                                        {usuario.sucursal?.nombre || '-'}
-                                    </td>
-
-                                    {/* Roles */}
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                                             {usuario.roles && usuario.roles.length > 0 ? (
                                                 usuario.roles.map((rol) => (
-                                                    <span
-                                                        key={rol.rol.id}
-                                                        style={{
-                                                            padding: '0.25rem 0.75rem',
-                                                            background: 'var(--accent-light)',
-                                                            color: 'var(--accent)',
-                                                            borderRadius: '6px',
-                                                            fontSize: '0.85rem',
-                                                            fontWeight: '500',
-                                                        }}
-                                                    >
+                                                    <span key={rol.rol.id} className="badge badge-emerald">
                                                         {rol.rol.nombre}
                                                     </span>
                                                 ))
                                             ) : (
-                                                <span style={{ color: 'var(--text-secondary)' }}>Sin roles</span>
+                                                <span style={{ color: 'var(--text-muted)' }}>Sin roles</span>
                                             )}
                                         </div>
                                     </td>
-
-                                    {/* Estado */}
                                     <td>
-                                        <span
-                                            style={{
-                                                padding: '0.35rem 0.85rem',
-                                                borderRadius: '8px',
-                                                fontSize: '0.85rem',
-                                                fontWeight: '600',
-                                                background: usuario.activo 
-                                                    ? 'rgba(34, 197, 94, 0.1)' 
-                                                    : 'rgba(239, 68, 68, 0.1)',
-                                                color: usuario.activo 
-                                                    ? 'rgb(34, 197, 94)' 
-                                                    : 'rgb(239, 68, 68)',
-                                            }}
-                                        >
+                                        <span className={`badge ${usuario.activo ? 'badge-emerald' : 'badge-danger'}`}>
                                             {usuario.activo ? 'Activo' : 'Inactivo'}
                                         </span>
                                     </td>
-
-                                    {/* Actions */}
                                     <td>
                                         <div className="action-buttons">
                                             <button
-                                                onClick={() => openResetPasswordModal(usuario.id)}
-                                                className="action-btn"
+                                                onClick={() => { setResetPasswordUserId(usuario.id); setNewPassword(''); }}
+                                                className="icon-btn"
                                                 title="Cambiar contraseña"
+                                                aria-label="Cambiar contraseña"
                                             >
-                                                <Key size={18} />
+                                                <Key size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleOpenModal(usuario)}
-                                                className="action-btn"
+                                                className="icon-btn"
                                                 title="Editar"
+                                                aria-label="Editar"
                                             >
-                                                <Edit size={18} />
+                                                <Edit size={16} />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(usuario)}
-                                                className="action-btn delete"
+                                                onClick={() => setDeletingUsuario(usuario)}
+                                                className="icon-btn danger"
                                                 title="Eliminar"
+                                                aria-label="Eliminar"
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -364,343 +278,140 @@ const UsuariosPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Edit/Create Modal */}
-            {isModalOpen && (
-                <div className="modal-overlay" onClick={handleCloseModal}>
-                    <div className="modal-content glass animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <div>
-                                <h2>{editingUsuario ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
-                                <p className="modal-subtitle">Completa los datos para {editingUsuario ? 'actualizar' : 'registrar'} el usuario.</p>
-                            </div>
-                            <button className="close-btn" onClick={handleCloseModal}>
-                                <X size={24} />
-                            </button>
-                        </header>
-                        <div className="modal-body">
-                            <UsuarioForm
-                                usuario={editingUsuario || undefined}
-                                onSave={handleSubmit}
-                                onCancel={handleCloseModal}
-                                loading={submitting}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Modal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                title={editingUsuario ? 'Editar Usuario' : 'Nuevo Usuario'}
+                subtitle={`Completa los datos para ${editingUsuario ? 'actualizar' : 'registrar'} el usuario.`}
+                maxWidth="650px"
+            >
+                <UsuarioForm
+                    usuario={editingUsuario || undefined}
+                    onSave={handleSubmit}
+                    onCancel={handleCloseModal}
+                    loading={submitting}
+                />
+            </Modal>
 
-            {/* Reset Password Modal */}
-            {showResetPasswordModal && (
-                <div className="modal-overlay" onClick={closeResetPasswordModal}>
-                    <div className="modal-content glass animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <div>
-                                <h2>Cambiar Contraseña</h2>
-                                <p className="modal-subtitle">Ingresa la nueva contraseña para el usuario.</p>
-                            </div>
-                            <button className="close-btn" onClick={closeResetPasswordModal}>
-                                <X size={24} />
-                            </button>
-                        </header>
-                        <div className="modal-body">
-                            <Input
-                                label="Nueva Contraseña"
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Ingrese la nueva contraseña"
-                                icon={<Lock size={18} />}
-                            />
-                            <div style={{
-                                marginTop: '1.5rem',
-                                display: 'flex',
-                                gap: '1rem',
-                                justifyContent: 'flex-end'
-                            }}>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={closeResetPasswordModal}
-                                >
-                                    Cancelar
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="primary"
-                                    onClick={handleResetPassword}
-                                >
-                                    Actualizar Contraseña
-                                </Button>
-                            </div>
-                        </div>
+            <Modal
+                isOpen={resetPasswordUserId !== null}
+                onClose={closeResetPasswordModal}
+                title="Cambiar contraseña"
+                subtitle="Ingresá la nueva contraseña para el usuario."
+                maxWidth="450px"
+                footer={
+                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', width: '100%' }}>
+                        <Button variant="secondary" onClick={closeResetPasswordModal}>Cancelar</Button>
+                        <Button variant="primary" onClick={handleResetPassword} loading={resettingPassword}>
+                            Actualizar
+                        </Button>
                     </div>
-                </div>
-            )}
+                }
+            >
+                <Input
+                    label="Nueva contraseña"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    icon={<Lock size={16} />}
+                />
+            </Modal>
 
-            {/* Delete Confirmation Modal */}
-            {showDeleteModal && deletingUsuario && (
-                <div className="modal-overlay" onClick={cancelDelete}>
-                    <div className="modal-content modal-confirmation glass animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <div>
-                                <h2>Confirmar Eliminación</h2>
-                                <p className="modal-subtitle">Esta acción no se puede deshacer.</p>
-                            </div>
-                            <button className="close-btn" onClick={cancelDelete}>
-                                <X size={24} />
-                            </button>
-                        </header>
-                        <div className="modal-body">
-                            <div className="delete-warning">
-                                <Trash2 size={48} />
-                                <p>
-                                    ¿Estás seguro de que deseas eliminar al usuario{' '}
-                                    <strong>{deletingUsuario.nombre}</strong>?
-                                </p>
-                            </div>
-                            <div style={{
-                                marginTop: '2rem',
-                                display: 'flex',
-                                gap: '1rem',
-                                justifyContent: 'flex-end'
-                            }}>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={cancelDelete}
-                                    style={{ paddingLeft: '2rem', paddingRight: '2rem' }}
-                                >
-                                    Cancelar
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="primary"
-                                    onClick={confirmDelete}
-                                    style={{ 
-                                        paddingLeft: '2.5rem', 
-                                        paddingRight: '2.5rem',
-                                        background: 'rgb(239, 68, 68)',
-                                        borderColor: 'rgb(239, 68, 68)'
-                                    }}
-                                >
-                                    Eliminar Usuario
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={!!deletingUsuario}
+                title="Eliminar usuario"
+                message={deletingUsuario
+                    ? `¿Eliminar al usuario "${deletingUsuario.nombre}"? Esta acción no se puede deshacer.`
+                    : ''}
+                confirmLabel="Eliminar usuario"
+                cancelLabel="Cancelar"
+                type="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => setDeletingUsuario(null)}
+                loading={deleteMutation.isPending}
+            />
 
             <style>{`
                 .page-container {
-                    padding: 2rem;
+                    padding: 2rem 0;
                     max-width: 1400px;
                     margin: 0 auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
                 }
 
                 .page-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 2rem;
                 }
 
                 .page-title {
                     display: flex;
                     align-items: center;
-                    gap: 1rem;
+                    gap: 0.875rem;
                     color: var(--text-primary);
                 }
 
+                .page-title svg {
+                    color: var(--accent);
+                }
+
                 .page-title h1 {
-                    font-size: 2rem;
+                    font-family: var(--font-display);
+                    font-size: var(--text-3xl);
                     font-weight: 700;
                     margin: 0;
+                    letter-spacing: -0.025em;
                 }
 
                 .page-title p {
                     margin: 0;
                     color: var(--text-secondary);
-                    font-size: 0.95rem;
+                    font-size: var(--text-sm);
                 }
 
                 .filters-bar {
-                    padding: 1.5rem;
-                    border-radius: 16px;
-                    margin-bottom: 1.5rem;
+                    padding: var(--space-3);
                     display: flex;
-                    gap: 1rem;
+                    gap: var(--space-4);
                     align-items: center;
                 }
 
-                .glass {
-                    background: var(--bg-card);
-                    backdrop-filter: blur(10px);
-                    border: 1px solid var(--border);
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-                }
-
-                .table-container {
-                    border-radius: 16px;
-                    overflow: hidden;
-                }
-
-                .data-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-
-                .data-table thead {
-                    background: var(--bg-elevated);
-                    border-bottom: 2px solid var(--border);
-                }
-
-                .data-table th {
-                    padding: 1rem 1.5rem;
-                    text-align: left;
-                    font-weight: 600;
-                    color: var(--text-secondary);
-                    font-size: 0.85rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-
-                .data-table tbody tr {
-                    border-bottom: 1px solid var(--border);
-                    transition: all 0.2s ease;
-                }
-
-                .data-table tbody tr:hover {
-                    background: var(--bg-elevated);
-                }
-
-                .data-table td {
-                    padding: 1.25rem 1.5rem;
-                    color: var(--text-primary);
-                }
-
-                .user-cell {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                }
-
+                .user-cell { display: flex; align-items: center; gap: 0.875rem; }
                 .user-avatar {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 10px;
-                    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    width: 38px; height: 38px;
+                    border-radius: var(--radius-md);
+                    background: var(--accent-gradient);
                     color: white;
+                    display: flex; align-items: center; justify-content: center;
+                    font-family: var(--font-display);
                     font-weight: 600;
-                    font-size: 1.1rem;
+                    font-size: var(--text-md);
+                    box-shadow: 0 4px 12px -4px rgba(var(--accent-rgb), 0.4);
                 }
-
-                .user-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.25rem;
-                }
-
-                .user-name {
-                    font-weight: 600;
-                    color: var(--text-primary);
-                }
-
+                .user-info { display: flex; flex-direction: column; gap: 2px; }
+                .user-name { font-weight: 600; color: var(--text-primary); font-size: var(--text-sm); }
                 .user-location {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.35rem;
-                    color: var(--text-secondary);
-                    font-size: 0.85rem;
+                    display: flex; align-items: center; gap: 0.35rem;
+                    color: var(--text-muted);
+                    font-size: var(--text-xs);
                 }
 
                 .contact-link {
                     display: inline-flex;
                     align-items: center;
                     gap: 0.5rem;
-                    color: var(--accent);
-                    text-decoration: none;
-                    transition: all 0.2s ease;
-                    padding: 0.25rem 0;
-                }
-
-                .contact-link:hover {
-                    color: var(--accent-dark);
-                    text-decoration: underline;
-                }
-
-                .action-buttons {
-                    display: flex;
-                    gap: 0.5rem;
-                }
-
-                .action-btn {
-                    padding: 0.5rem;
-                    background: var(--bg-elevated);
-                    border: 1px solid var(--border);
-                    border-radius: 8px;
                     color: var(--text-secondary);
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    text-decoration: none;
+                    font-size: var(--text-sm);
+                    transition: color var(--duration-base) var(--easing-soft);
                 }
+                .contact-link:hover { color: var(--accent); }
 
-                .action-btn:hover {
-                    background: var(--accent-light);
-                    border-color: var(--accent);
-                    color: var(--accent);
-                    transform: translateY(-2px);
-                }
-
-                .action-btn.delete:hover {
-                    background: rgba(239, 68, 68, 0.1);
-                    border-color: rgb(239, 68, 68);
-                    color: rgb(239, 68, 68);
-                }
-
-                /* Improved Modal Styles */
-                .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; }
-                .modal-content { width: 100%; max-width: 650px; max-height: 95vh; overflow-y: auto; border-radius: 1.5rem; background: var(--bg-card); padding: 2.5rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); position: relative; border: 1px solid var(--border); }
-                .animate-fade-in { animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-                
-                @keyframes modalFadeIn {
-                    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-                    to { opacity: 1; transform: scale(1) translateY(0); }
-                }
-
-                .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; }
-                .modal-header h2 { font-size: 1.75rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.025em; margin: 0; }
-                .modal-subtitle { color: var(--text-secondary); font-size: 0.9375rem; margin-top: 0.25rem; }
-                .close-btn { color: var(--text-muted); padding: 0.75rem; border-radius: 1rem; background: var(--bg-secondary); display: flex; transition: all 0.2s; border: none; cursor: pointer; }
-                .close-btn:hover { background: #e2e8f0; color: var(--text-primary); transform: rotate(90deg); }
-                
-                .modal-confirmation { max-width: 500px; }
-                .delete-warning {
-                    text-align: center;
-                    padding: 2rem 1rem;
-                    background: var(--bg-secondary);
-                    border-radius: 1rem;
-                    border: 1px solid var(--border);
-                }
-                .delete-warning svg {
-                    color: rgb(239, 68, 68);
-                    margin-bottom: 1rem;
-                }
-                .delete-warning p {
-                    color: var(--text-primary);
-                    font-size: 1.05rem;
-                    line-height: 1.6;
-                    margin: 0;
-                }
-                .delete-warning strong {
-                    color: var(--accent);
-                    font-weight: 700;
-                }
+                .action-buttons { display: flex; gap: 0.4rem; }
             `}</style>
         </div>
     );

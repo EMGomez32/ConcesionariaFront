@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Upload, X, FileText, AlertCircle } from 'lucide-react';
+import { Upload, X, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 import client from '../../api/client';
 
 interface FileUploaderProps {
@@ -21,6 +21,12 @@ interface FileUploaderProps {
 
 const DEFAULT_MAX = 25 * 1024 * 1024;
 
+const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
+
 export function FileUploader({
     endpoint,
     extraFields = {},
@@ -35,6 +41,7 @@ export function FileUploader({
     const [error, setError] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [dragOver, setDragOver] = useState(false);
 
     const reset = () => {
         setFile(null);
@@ -43,15 +50,24 @@ export function FileUploader({
         if (inputRef.current) inputRef.current.value = '';
     };
 
-    const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const f = e.target.files?.[0];
+    const handleFiles = (f: File | undefined) => {
         if (!f) return;
         if (f.size > maxBytes) {
-            setError(`El archivo supera el máximo de ${(maxBytes / 1024 / 1024).toFixed(1)} MB`);
+            setError(`El archivo supera el máximo de ${formatSize(maxBytes)}`);
             return;
         }
         setFile(f);
         setError(null);
+    };
+
+    const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        handleFiles(e.target.files?.[0]);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        setDragOver(false);
+        handleFiles(e.dataTransfer.files?.[0]);
     };
 
     const handleUpload = async () => {
@@ -89,46 +105,59 @@ export function FileUploader({
     };
 
     return (
-        <div className="file-uploader">
-            <label className="uploader-label">{label}</label>
+        <div className="uploader">
+            {label && <label className="input-label">{label}</label>}
 
             {!file && (
                 <button
                     type="button"
-                    className="uploader-dropzone"
+                    className={`uploader-zone ${dragOver ? 'is-drag' : ''}`}
                     onClick={() => inputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
                     disabled={disabled}
                 >
-                    <Upload size={20} />
-                    <span>Click para seleccionar archivo</span>
-                    {accept && <small>{accept}</small>}
+                    <span className="uploader-zone-icon">
+                        <Upload size={20} />
+                    </span>
+                    <span className="uploader-zone-text">
+                        <strong>Arrastrá un archivo</strong>
+                        <span>o hacé click para elegir</span>
+                    </span>
+                    {accept && <small className="uploader-zone-hint">Acepta: {accept}</small>}
+                    <small className="uploader-zone-hint">Máx. {formatSize(maxBytes)}</small>
                 </button>
             )}
 
             {file && (
-                <div className="uploader-selected">
-                    <FileText size={18} />
+                <div className="uploader-file">
+                    <span className="uploader-file-icon">
+                        <FileText size={18} />
+                    </span>
                     <div className="uploader-file-info">
                         <span className="uploader-filename">{file.name}</span>
-                        <small>{(file.size / 1024).toFixed(1)} KB</small>
+                        <small>{formatSize(file.size)}</small>
                     </div>
                     {!uploading && (
                         <button type="button" onClick={reset} className="uploader-clear" aria-label="Quitar archivo">
-                            <X size={16} />
+                            <X size={14} />
                         </button>
                     )}
                 </div>
             )}
 
             {uploading && (
-                <div className="uploader-progress">
-                    <div className="uploader-progress-bar" style={{ width: `${progress}%` }} />
+                <div className="uploader-progress" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+                    <div className="uploader-progress-track">
+                        <div className="uploader-progress-fill" style={{ width: `${progress}%` }} />
+                    </div>
                     <small>{progress}%</small>
                 </div>
             )}
 
             {error && (
-                <div className="uploader-error">
+                <div className="uploader-alert uploader-alert-error" role="alert">
                     <AlertCircle size={14} />
                     <span>{error}</span>
                 </div>
@@ -148,52 +177,187 @@ export function FileUploader({
                     type="button"
                     onClick={handleUpload}
                     disabled={disabled}
-                    className="uploader-submit"
+                    className="btn btn-primary btn-sm uploader-submit"
                 >
-                    Subir
+                    <CheckCircle2 size={14} />
+                    Subir archivo
                 </button>
             )}
 
             <style>{`
-                .file-uploader { display: flex; flex-direction: column; gap: 0.5rem; }
-                .uploader-label { font-weight: 600; font-size: 0.825rem; color: #94a3b8; }
-                .uploader-dropzone {
-                    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-                    padding: 1.5rem; border: 2px dashed rgba(255,255,255,0.15); border-radius: 12px;
-                    background: rgba(30,41,59,0.3); color: #94a3b8; cursor: pointer; transition: all 0.2s;
+                .uploader {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--space-3);
                 }
-                .uploader-dropzone:hover:not(:disabled) { border-color: var(--accent, #6366f1); color: var(--accent, #6366f1); }
-                .uploader-dropzone:disabled { opacity: 0.5; cursor: not-allowed; }
-                .uploader-dropzone small { font-size: 0.7rem; opacity: 0.6; }
-                .uploader-selected {
-                    display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem;
-                    border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: rgba(30,41,59,0.5);
+
+                .uploader-zone {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: var(--space-2);
+                    padding: var(--space-6) var(--space-4);
+                    border: 1.5px dashed var(--border-strong);
+                    border-radius: var(--radius-lg);
+                    background: var(--bg-secondary);
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    text-align: center;
+                    transition: border-color var(--duration-base) var(--easing-soft),
+                                background var(--duration-base) var(--easing-soft),
+                                color var(--duration-base) var(--easing-soft);
                 }
-                .uploader-file-info { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; }
-                .uploader-filename { font-size: 0.875rem; color: #e2e8f0; word-break: break-all; }
-                .uploader-file-info small { font-size: 0.7rem; color: #64748b; }
+
+                .uploader-zone:hover:not(:disabled),
+                .uploader-zone.is-drag {
+                    border-color: var(--accent);
+                    background: var(--accent-light);
+                    color: var(--accent);
+                }
+
+                .uploader-zone:disabled { opacity: 0.5; cursor: not-allowed; }
+
+                .uploader-zone-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: var(--radius-md);
+                    background: var(--bg-card);
+                    border: 1px solid var(--border);
+                    color: inherit;
+                }
+
+                .uploader-zone-text {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    font-size: var(--text-sm);
+                }
+
+                .uploader-zone-text strong {
+                    font-family: var(--font-display);
+                    font-size: var(--text-base);
+                    color: var(--text-primary);
+                    font-weight: 600;
+                }
+
+                .uploader-zone:hover:not(:disabled) .uploader-zone-text strong,
+                .uploader-zone.is-drag .uploader-zone-text strong {
+                    color: var(--accent);
+                }
+
+                .uploader-zone-hint {
+                    font-size: var(--text-xs);
+                    color: var(--text-muted);
+                }
+
+                .uploader-file {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-3);
+                    padding: var(--space-3) var(--space-4);
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-md);
+                    background: var(--bg-card);
+                }
+
+                .uploader-file-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: var(--radius-sm);
+                    background: var(--accent-light);
+                    color: var(--accent);
+                }
+
+                .uploader-file-info {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-width: 0;
+                }
+
+                .uploader-filename {
+                    font-size: var(--text-sm);
+                    font-weight: 500;
+                    color: var(--text-primary);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .uploader-file-info small {
+                    font-size: var(--text-xs);
+                    color: var(--text-muted);
+                }
+
                 .uploader-clear {
-                    background: transparent; color: #94a3b8; border: none; padding: 0.25rem; cursor: pointer;
-                    border-radius: 6px;
+                    background: transparent;
+                    color: var(--text-muted);
+                    border: 1px solid transparent;
+                    padding: 0.35rem;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    transition: background var(--duration-base) var(--easing-soft),
+                                color var(--duration-base) var(--easing-soft),
+                                border-color var(--duration-base) var(--easing-soft);
                 }
-                .uploader-clear:hover { background: rgba(239,68,68,0.1); color: #fca5a5; }
+
+                .uploader-clear:hover {
+                    background: rgba(239, 68, 68, 0.10);
+                    border-color: rgba(239, 68, 68, 0.25);
+                    color: var(--danger);
+                }
+
                 .uploader-progress {
-                    display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0;
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-3);
+                    font-family: var(--font-display);
+                    font-variant-numeric: tabular-nums;
+                    font-size: var(--text-xs);
+                    color: var(--text-secondary);
                 }
-                .uploader-progress-bar {
-                    flex: 1; height: 6px; background: var(--accent-gradient, #6366f1); border-radius: 3px;
-                    transition: width 0.2s;
+
+                .uploader-progress-track {
+                    flex: 1;
+                    height: 6px;
+                    background: var(--bg-secondary);
+                    border-radius: var(--radius-pill);
+                    overflow: hidden;
                 }
-                .uploader-error {
-                    display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem;
-                    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);
-                    border-radius: 8px; color: #fca5a5; font-size: 0.8rem;
+
+                .uploader-progress-fill {
+                    height: 100%;
+                    border-radius: var(--radius-pill);
+                    background: var(--accent-gradient);
+                    transition: width 0.18s var(--easing-soft);
+                    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.5);
                 }
+
+                .uploader-alert {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-2);
+                    padding: var(--space-2) var(--space-3);
+                    border-radius: var(--radius-sm);
+                    font-size: var(--text-xs);
+                    font-weight: 500;
+                }
+
+                .uploader-alert-error {
+                    background: rgba(239, 68, 68, 0.10);
+                    border: 1px solid rgba(239, 68, 68, 0.25);
+                    color: var(--danger);
+                }
+
                 .uploader-submit {
-                    padding: 0.625rem 1rem; background: var(--accent-gradient, #6366f1); color: white;
-                    border-radius: 8px; font-weight: 600; font-size: 0.875rem; border: none; cursor: pointer;
+                    align-self: flex-start;
                 }
-                .uploader-submit:disabled { opacity: 0.5; cursor: not-allowed; }
             `}</style>
         </div>
     );

@@ -29,7 +29,7 @@ export interface Vehiculo {
 
     // Relaciones (opcionales según el endpoint)
     sucursal?: { id: number; nombre: string };
-    archivos?: any[];
+    archivos?: unknown[];
 }
 
 export interface VehiculoFilter {

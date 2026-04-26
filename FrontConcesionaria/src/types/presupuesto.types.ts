@@ -14,5 +14,5 @@ export interface Presupuesto {
     // Relaciones
     cliente?: { nombre: string };
     vendedor?: { nombre: string };
-    items?: any[];
+    items?: unknown[];
 }

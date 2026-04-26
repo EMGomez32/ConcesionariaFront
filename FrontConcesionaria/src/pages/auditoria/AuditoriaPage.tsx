@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Download, Eye, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { auditoriaApi } from '../../api/auditoria.api';
 import type { AuditLog, AccionAudit, AuditLogFilter } from '../../api/auditoria.api';
 import { useUIStore } from '../../store/uiStore';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
 
 const ACCIONES: AccionAudit[] = ['create', 'update', 'cancel', 'delete_soft', 'login', 'logout'];
 
@@ -25,66 +27,72 @@ const accionLabel: Record<AccionAudit, string> = {
 };
 
 interface DetailModalProps {
-  log: AuditLog;
+  log: AuditLog | null;
   onClose: () => void;
 }
 
+const dlStyle: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 };
+
 const DetailModal = ({ log, onClose }: DetailModalProps) => (
-  <div className="modal-overlay" onClick={onClose}>
-    <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-      <div className="modal-header">
-        <h3>Detalle de Registro</h3>
-        <button className="btn-icon" onClick={onClose}><X size={20} /></button>
-      </div>
-      <div className="modal-body">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+  <Modal
+    isOpen={log !== null}
+    onClose={onClose}
+    title="Detalle de Registro"
+    maxWidth="540px"
+    footer={<Button variant="secondary" onClick={onClose}>Cerrar</Button>}
+  >
+    {log && (
+      <>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>ID</div>
+            <div style={dlStyle}>ID</div>
             <div style={{ fontWeight: 600 }}>#{log.id}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Fecha</div>
+            <div style={dlStyle}>Fecha</div>
             <div>{new Date(log.createdAt).toLocaleString('es-AR')}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Usuario</div>
+            <div style={dlStyle}>Usuario</div>
             <div>{log.usuario ? `${log.usuario.nombre} (${log.usuario.email})` : '—'}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Acción</div>
+            <div style={dlStyle}>Acción</div>
             <span className={accionColor[log.accion]}>{accionLabel[log.accion]}</span>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Entidad</div>
+            <div style={dlStyle}>Entidad</div>
             <div style={{ fontWeight: 500 }}>{log.entidad}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>ID Entidad</div>
+            <div style={dlStyle}>ID Entidad</div>
             <div>{log.entidadId ?? '—'}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>IP</div>
+            <div style={dlStyle}>IP</div>
             <div>{log.ip ?? '—'}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Usuario ID</div>
+            <div style={dlStyle}>Usuario ID</div>
             <div>{log.usuarioId ?? '—'}</div>
           </div>
         </div>
         {log.userAgent && (
-          <div style={{ marginTop: '0.75rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>User Agent</div>
+          <div style={{ marginTop: 'var(--space-4)' }}>
+            <div style={dlStyle}>User Agent</div>
             <div style={{ fontSize: '0.8rem', wordBreak: 'break-all', color: 'var(--text-secondary)' }}>{log.userAgent}</div>
           </div>
         )}
         {log.detalle && (
-          <div style={{ marginTop: '0.75rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Detalle</div>
+          <div style={{ marginTop: 'var(--space-4)' }}>
+            <div style={dlStyle}>Detalle</div>
             <pre style={{
               background: 'var(--bg-secondary)',
-              borderRadius: '0.5rem',
-              padding: '0.75rem',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: 'var(--space-3)',
               fontSize: '0.8rem',
+              fontFamily: 'var(--font-mono)',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-all',
               maxHeight: 200,
@@ -94,12 +102,9 @@ const DetailModal = ({ log, onClose }: DetailModalProps) => (
             </pre>
           </div>
         )}
-      </div>
-      <div className="modal-footer">
-        <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-      </div>
-    </div>
-  </div>
+      </>
+    )}
+  </Modal>
 );
 
 export default function AuditoriaPage() {
@@ -299,7 +304,7 @@ export default function AuditoriaPage() {
         </div>
       )}
 
-      {selectedLog && <DetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
+      <DetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
 }

@@ -89,7 +89,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({ onSubmit, initialData, onCanc
         setExistingCliente(null);
 
         try {
-            const filters: any = { dni: dniToCheck };
+            const filters: Record<string, unknown> = { dni: dniToCheck };
             if (concesionariaIdForCheck) {
                 filters.concesionariaId = concesionariaIdForCheck;
             }

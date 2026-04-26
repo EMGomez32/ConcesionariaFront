@@ -1,6 +1,6 @@
 import Modal from './Modal';
 import Button from './Button';
-import { AlertTriangle, HelpCircle, Info, Trash2 } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Info, Trash2, CheckCircle2 } from 'lucide-react';
 
 export type ConfirmType = 'default' | 'danger' | 'warning' | 'info' | 'success' | 'question';
 
@@ -16,13 +16,13 @@ interface ConfirmDialogProps {
     loading?: boolean;
 }
 
-const ICONS = {
-    default: <Info className="text-slate-400" size={32} />,
-    danger: <Trash2 className="text-danger" size={32} />,
-    warning: <AlertTriangle className="text-warning" size={32} />,
-    info: <Info className="text-info" size={32} />,
-    success: <Info className="text-success" size={32} />,
-    question: <HelpCircle className="text-accent" size={32} />,
+const TYPE_META: Record<ConfirmType, { color: string; bg: string; Icon: React.ElementType }> = {
+    default: { color: 'var(--text-secondary)', bg: 'var(--bg-secondary)', Icon: Info },
+    danger: { color: 'var(--danger)', bg: 'rgba(239, 68, 68, 0.10)', Icon: Trash2 },
+    warning: { color: 'var(--warning)', bg: 'rgba(245, 158, 11, 0.10)', Icon: AlertTriangle },
+    info: { color: 'var(--info)', bg: 'rgba(var(--accent-3-rgb), 0.10)', Icon: Info },
+    success: { color: 'var(--success)', bg: 'rgba(var(--accent-rgb), 0.10)', Icon: CheckCircle2 },
+    question: { color: 'var(--accent-2)', bg: 'rgba(var(--accent-2-rgb), 0.10)', Icon: HelpCircle },
 };
 
 const ConfirmDialog = ({
@@ -36,32 +36,61 @@ const ConfirmDialog = ({
     onCancel,
     loading = false
 }: ConfirmDialogProps) => {
+    const meta = TYPE_META[type];
+    const Icon = meta.Icon;
+
     return (
         <Modal
             isOpen={isOpen}
             onClose={onCancel}
             title={title}
-            maxWidth="400px"
+            maxWidth="420px"
             footer={(
-                <div className="flex justify-center gap-4 w-full">
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', width: '100%' }}>
                     <Button variant="secondary" onClick={onCancel} disabled={loading}>
                         {cancelLabel}
                     </Button>
                     <Button
                         variant={type === 'danger' ? 'danger' : 'primary'}
                         onClick={onConfirm}
-                        disabled={loading}
+                        loading={loading}
                     >
-                        {loading ? 'Procesando...' : confirmLabel}
+                        {confirmLabel}
                     </Button>
                 </div>
             )}
         >
-            <div className="flex flex-col items-center text-center py-4">
-                <div className="mb-8" style={{ transform: 'scale(1.5)' }}>
-                    {ICONS[type]}
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: 'var(--space-5)',
+                padding: 'var(--space-2) 0'
+            }}>
+                <div
+                    style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: 'var(--radius-xl)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: meta.bg,
+                        color: meta.color,
+                        border: `1px solid ${meta.color}33`,
+                    }}
+                >
+                    <Icon size={32} />
                 </div>
-                <p className="text-secondary leading-relaxed font-semibold text-lg max-w-[340px]">
+                <p style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: 'var(--text-md)',
+                    fontWeight: 500,
+                    lineHeight: 1.55,
+                    maxWidth: 320,
+                    margin: 0,
+                }}>
                     {message}
                 </p>
             </div>

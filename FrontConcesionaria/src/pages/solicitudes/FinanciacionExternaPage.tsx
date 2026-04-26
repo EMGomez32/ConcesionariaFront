@@ -586,7 +586,7 @@ export default function FinanciacionExternaPage() {
                             <input className="input" value={finForm.nombre} onChange={e => setFinForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre de la entidad" />
                         </FormField>
                         <FormField label="Tipo">
-                            <select className="input" value={finForm.tipo} onChange={e => setFinForm(p => ({ ...p, tipo: e.target.value as any }))}>
+                            <select className="input" value={finForm.tipo} onChange={e => setFinForm(p => ({ ...p, tipo: e.target.value as 'financiera' | 'banco' | 'otra' }))}>
                                 <option value="financiera">Financiera</option>
                                 <option value="banco">Banco</option>
                                 <option value="otra">Otra</option>

@@ -1,18 +1,37 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import CommandPalette from './CommandPalette';
+import ScrollProgress from './ScrollProgress';
+import SkipLink from './SkipLink';
 import Toast from '../ui/Toast';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import { useConfirmStore } from '../../store/confirmStore';
+import { useCommandPaletteStore } from '../../store/commandPaletteStore';
 
 const AppLayout = () => {
     const confirm = useConfirmStore();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const togglePalette = useCommandPaletteStore((s) => s.toggle);
+    const { pathname } = useLocation();
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                togglePalette();
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [togglePalette]);
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
+            <SkipLink />
             <Toast />
+            <CommandPalette />
             <ConfirmDialog
                 isOpen={confirm.isOpen}
                 title={confirm.title}
@@ -32,9 +51,14 @@ const AppLayout = () => {
             )}
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <ScrollProgress />
                 <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
-                <main style={{ padding: '2rem', flex: 1, overflowY: 'auto' }}>
-                    <div className="animate-fade-in">
+                <main
+                    id="main-content"
+                    tabIndex={-1}
+                    style={{ padding: '2rem', flex: 1, overflowY: 'auto' }}
+                >
+                    <div key={pathname} className="page-transition">
                         <Outlet />
                     </div>
                 </main>

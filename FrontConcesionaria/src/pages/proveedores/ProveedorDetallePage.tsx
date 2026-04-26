@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { proveedoresApi } from '../../api/proveedores.api';
 import type { Proveedor } from '../../types/proveedor.types';
@@ -9,6 +9,33 @@ import {
 } from 'lucide-react';
 
 type Tab = 'info' | 'vehiculos' | 'gastos' | 'postventa';
+
+interface VehiculoCompra {
+    id: number;
+    marca?: string;
+    modelo?: string;
+    anio?: number;
+    patente?: string;
+    dominio?: string;
+    estado?: string;
+    precioCompra?: number | string;
+}
+
+interface GastoVehiculo {
+    id: number;
+    descripcion?: string;
+    fecha?: string;
+    monto?: number | string;
+    vehiculo?: { marca?: string; modelo?: string };
+}
+
+interface PostventaItemDet {
+    id: number;
+    descripcion?: string;
+    fecha?: string;
+    monto?: number | string;
+    caso?: { id: number };
+}
 
 const TIPO_COLORS: Record<string, string> = {
     importadora: '#6366f1',
@@ -24,9 +51,9 @@ const ProveedorDetallePage = () => {
 
     const [activeTab, setActiveTab] = useState<Tab>('info');
     const [proveedor, setProveedor] = useState<Proveedor | null>(null);
-    const [vehiculos, setVehiculos] = useState<any[]>([]);
-    const [gastos, setGastos] = useState<any[]>([]);
-    const [postventaItems, setPostventaItems] = useState<any[]>([]);
+    const [vehiculos, setVehiculos] = useState<VehiculoCompra[]>([]);
+    const [gastos, setGastos] = useState<GastoVehiculo[]>([]);
+    const [postventaItems, setPostventaItems] = useState<PostventaItemDet[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -37,9 +64,9 @@ const ProveedorDetallePage = () => {
             setError(null);
             try {
                 const data = await proveedoresApi.getById(Number(id)) as Proveedor & {
-                    vehiculosCompra?: unknown[];
-                    gastosVehiculo?: unknown[];
-                    postventaItems?: unknown[];
+                    vehiculosCompra?: VehiculoCompra[];
+                    gastosVehiculo?: GastoVehiculo[];
+                    postventaItems?: PostventaItemDet[];
                 };
                 setProveedor(data);
                 setVehiculos(data.vehiculosCompra ?? []);
@@ -71,7 +98,7 @@ const ProveedorDetallePage = () => {
 
     const tipoColor = TIPO_COLORS[proveedor.tipo || 'otro'];
 
-    const tabs: { key: Tab; label: string; icon: any; count?: number }[] = [
+    const tabs: { key: Tab; label: string; icon: React.ComponentType<{ size?: number }>; count?: number }[] = [
         { key: 'info', label: 'Información', icon: Building2 },
         { key: 'vehiculos', label: 'Vehículos', icon: Car, count: vehiculos.length },
         { key: 'gastos', label: 'Gastos', icon: DollarSign, count: gastos.length },
@@ -192,7 +219,7 @@ const ProveedorDetallePage = () => {
                                     <tr><th>Vehículo</th><th>Dominio</th><th>Estado</th><th>Precio compra</th></tr>
                                 </thead>
                                 <tbody>
-                                    {vehiculos.map((v: any) => (
+                                    {vehiculos.map((v) => (
                                         <tr key={v.id}>
                                             <td><div className="fw-bold">{v.marca} {v.modelo}</div><div className="text-muted-sm">{v.anio}</div></td>
                                             <td>{v.patente || v.dominio || '-'}</td>
@@ -214,7 +241,7 @@ const ProveedorDetallePage = () => {
                                     <tr><th>Descripción</th><th>Vehículo</th><th>Fecha</th><th>Monto</th></tr>
                                 </thead>
                                 <tbody>
-                                    {gastos.map((g: any) => (
+                                    {gastos.map((g) => (
                                         <tr key={g.id}>
                                             <td>{g.descripcion || '-'}</td>
                                             <td>{g.vehiculo ? `${g.vehiculo.marca} ${g.vehiculo.modelo}` : '-'}</td>
@@ -236,7 +263,7 @@ const ProveedorDetallePage = () => {
                                     <tr><th>Descripción</th><th>Caso</th><th>Fecha</th><th>Monto</th></tr>
                                 </thead>
                                 <tbody>
-                                    {postventaItems.map((item: any) => (
+                                    {postventaItems.map((item) => (
                                         <tr key={item.id}>
                                             <td>{item.descripcion || '-'}</td>
                                             <td>{item.caso ? `#${item.caso.id}` : '-'}</td>
@@ -304,7 +331,7 @@ const ProveedorDetallePage = () => {
     );
 };
 
-const EmptyState = ({ icon: Icon, text }: { icon: any; text: string }) => (
+const EmptyState = ({ icon: Icon, text }: { icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>; text: string }) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem', color: 'var(--text-muted)', textAlign: 'center' }}>
         <Icon size={48} style={{ opacity: 0.2 }} />
         <p>{text}</p>

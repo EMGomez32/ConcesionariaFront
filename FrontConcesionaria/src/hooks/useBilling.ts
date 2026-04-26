@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { billingApi } from '../api/billing.api';
+import { billingApi, type UpdateSubscriptionDto, type RegistrarPagoDto, type InvoiceStatus } from '../api/billing.api';
 import type { PaginationOptions } from '../types/common.types';
 
 export const billingKeys = {
@@ -12,7 +12,7 @@ export const billingKeys = {
     invoice: (id: number) => [...billingKeys.invoices(), id] as const,
 };
 
-export const usePlanes = (params?: any) => {
+export const usePlanes = (params?: { activo?: boolean }) => {
     return useQuery({
         queryKey: [...billingKeys.planes(), params],
         queryFn: async () => {
@@ -35,7 +35,7 @@ export const useSubscriptions = () => {
 export const useUpdateSubscription = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: number; data: any }) => billingApi.updateSubscription(id, data),
+        mutationFn: ({ id, data }: { id: number; data: UpdateSubscriptionDto }) => billingApi.updateSubscription(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: billingKeys.subscriptions() });
         }
@@ -52,7 +52,7 @@ export const useMySubscription = () => {
     });
 };
 
-export const useInvoices = (filters: any = {}, options: PaginationOptions = {}) => {
+export const useInvoices = (filters: { status?: InvoiceStatus; subscriptionId?: number } = {}, options: PaginationOptions = {}) => {
     return useQuery({
         queryKey: [...billingKeys.invoices(), { ...filters, ...options }],
         queryFn: async () => {
@@ -65,7 +65,7 @@ export const useInvoices = (filters: any = {}, options: PaginationOptions = {}) 
 export const useRegistrarPago = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: number; data: any }) => billingApi.registrarPago(id, data),
+        mutationFn: ({ id, data }: { id: number; data: RegistrarPagoDto }) => billingApi.registrarPago(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
         },

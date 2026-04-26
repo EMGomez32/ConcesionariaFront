@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, X, RefreshCw, Eye, Receipt, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, RefreshCw, Eye, Receipt, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
 import { billingApi } from '../../api/billing.api';
 import type {
   Plan,
@@ -72,86 +73,85 @@ const InvoiceDetailModal = ({ invoice, onClose, onAddPayment }: PaymentListProps
   const total = parseFloat(invoice.total);
   const pending = total - paid;
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Factura {invoice.numero ?? `#${invoice.id}`}</h3>
-          <button className="btn-icon" onClick={onClose}><X size={20} /></button>
-        </div>
-        <div className="modal-body">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Estado</div>
-              <span className={INV_STATUS_COLORS[invoice.status]}>{INV_STATUS_LABELS[invoice.status]}</span>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Total</div>
-              <div style={{ fontWeight: 600 }}>{invoice.moneda} {parseFloat(invoice.total).toLocaleString('es-AR')}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Saldo pendiente</div>
-              <div style={{ fontWeight: 600, color: pending > 0 ? 'var(--color-danger, #ef4444)' : 'inherit' }}>
-                {invoice.moneda} {pending.toLocaleString('es-AR')}
-              </div>
-            </div>
-            {invoice.periodoDesde && (
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Período</div>
-                <div>{invoice.periodoDesde?.slice(0, 10)} — {invoice.periodoHasta?.slice(0, 10)}</div>
-              </div>
-            )}
-            {invoice.dueDate && (
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Vencimiento</div>
-                <div>{invoice.dueDate.slice(0, 10)}</div>
-              </div>
-            )}
-            {invoice.paidAt && (
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Fecha pago</div>
-                <div>{new Date(invoice.paidAt).toLocaleDateString('es-AR')}</div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Pagos registrados</div>
-          {payments.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Sin pagos registrados.</p>
-          ) : (
-            <table className="table" style={{ marginBottom: '0.75rem' }}>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Monto</th>
-                  <th>Moneda</th>
-                  <th>Método</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map(p => (
-                  <tr key={p.id}>
-                    <td style={{ fontSize: '0.82rem' }}>{new Date(p.createdAt).toLocaleDateString('es-AR')}</td>
-                    <td style={{ fontWeight: 500 }}>{parseFloat(p.monto).toLocaleString('es-AR')}</td>
-                    <td>{p.moneda}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{p.metodo ?? '—'}</td>
-                    <td><span className="status-badge status-activo">{p.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <div className="modal-footer">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={`Factura ${invoice.numero ?? `#${invoice.id}`}`}
+      maxWidth="600px"
+      footer={(
+        <>
           <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
           {invoice.status !== 'paid' && invoice.status !== 'void' && (
             <button className="btn btn-primary" onClick={() => { onClose(); onAddPayment(invoice); }}>
               <Plus size={16} /> Registrar Pago
             </button>
           )}
+        </>
+      )}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Estado</div>
+          <span className={INV_STATUS_COLORS[invoice.status]}>{INV_STATUS_LABELS[invoice.status]}</span>
         </div>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Total</div>
+          <div style={{ fontWeight: 600 }}>{invoice.moneda} {parseFloat(invoice.total).toLocaleString('es-AR')}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Saldo pendiente</div>
+          <div style={{ fontWeight: 600, color: pending > 0 ? 'var(--color-danger, #ef4444)' : 'inherit' }}>
+            {invoice.moneda} {pending.toLocaleString('es-AR')}
+          </div>
+        </div>
+        {invoice.periodoDesde && (
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Período</div>
+            <div>{invoice.periodoDesde?.slice(0, 10)} — {invoice.periodoHasta?.slice(0, 10)}</div>
+          </div>
+        )}
+        {invoice.dueDate && (
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Vencimiento</div>
+            <div>{invoice.dueDate.slice(0, 10)}</div>
+          </div>
+        )}
+        {invoice.paidAt && (
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 2 }}>Fecha pago</div>
+            <div>{new Date(invoice.paidAt).toLocaleDateString('es-AR')}</div>
+          </div>
+        )}
       </div>
-    </div>
+
+      <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Pagos registrados</div>
+      {payments.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Sin pagos registrados.</p>
+      ) : (
+        <table className="table" style={{ marginBottom: '0.75rem' }}>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Monto</th>
+              <th>Moneda</th>
+              <th>Método</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payments.map(p => (
+              <tr key={p.id}>
+                <td style={{ fontSize: '0.82rem' }}>{new Date(p.createdAt).toLocaleDateString('es-AR')}</td>
+                <td style={{ fontWeight: 500 }}>{parseFloat(p.monto).toLocaleString('es-AR')}</td>
+                <td>{p.moneda}</td>
+                <td style={{ textTransform: 'capitalize' }}>{p.metodo ?? '—'}</td>
+                <td><span className="status-badge status-activo">{p.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Modal>
   );
 };
 
@@ -731,190 +731,183 @@ export default function BillingPage() {
       )}
 
       {/* ── MODAL: PLAN ── */}
-      {showPlanModal && (
-        <div className="modal-overlay" onClick={() => setShowPlanModal(false)}>
-          <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editingPlan ? 'Editar Plan' : 'Nuevo Plan'}</h3>
-              <button className="btn-icon" onClick={() => setShowPlanModal(false)}><X size={20} /></button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Nombre *</label>
-                <input className="form-input" value={planForm.nombre} onChange={e => setPlanForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Plan Pro" />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Intervalo *</label>
-                  <select className="form-select" value={planForm.interval as string} onChange={e => setPlanForm(f => ({ ...f, interval: e.target.value as PlanInterval }))}>
-                    <option value="MONTH">Mensual</option>
-                    <option value="YEAR">Anual</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Moneda</label>
-                  <input className="form-input" value={planForm.moneda} onChange={e => setPlanForm(f => ({ ...f, moneda: e.target.value }))} placeholder="ARS" />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Precio *</label>
-                <input className="form-input" type="number" step="0.01" value={planForm.precio as string} onChange={e => setPlanForm(f => ({ ...f, precio: e.target.value }))} placeholder="0.00" />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Máx. Usuarios</label>
-                  <input className="form-input" type="number" value={planForm.maxUsuarios ?? ''} onChange={e => setPlanForm(f => ({ ...f, maxUsuarios: e.target.value ? parseInt(e.target.value) : undefined }))} placeholder="∞" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Máx. Sucursales</label>
-                  <input className="form-input" type="number" value={planForm.maxSucursales ?? ''} onChange={e => setPlanForm(f => ({ ...f, maxSucursales: e.target.value ? parseInt(e.target.value) : undefined }))} placeholder="∞" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Máx. Vehículos</label>
-                  <input className="form-input" type="number" value={planForm.maxVehiculos ?? ''} onChange={e => setPlanForm(f => ({ ...f, maxVehiculos: e.target.value ? parseInt(e.target.value) : undefined }))} placeholder="∞" />
-                </div>
-              </div>
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={planForm.activo ?? true} onChange={e => setPlanForm(f => ({ ...f, activo: e.target.checked }))} />
-                  Activo
-                </label>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowPlanModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSavePlan} disabled={savingPlan}>
-                {savingPlan ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
+      <Modal
+        isOpen={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        title={editingPlan ? 'Editar Plan' : 'Nuevo Plan'}
+        maxWidth="500px"
+        footer={(
+          <>
+            <button className="btn btn-secondary" onClick={() => setShowPlanModal(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleSavePlan} disabled={savingPlan}>
+              {savingPlan ? 'Guardando...' : 'Guardar'}
+            </button>
+          </>
+        )}
+      >
+        <div className="form-group">
+          <label className="form-label">Nombre *</label>
+          <input className="form-input" value={planForm.nombre} onChange={e => setPlanForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Plan Pro" />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="form-group">
+            <label className="form-label">Intervalo *</label>
+            <select className="form-select" value={planForm.interval as string} onChange={e => setPlanForm(f => ({ ...f, interval: e.target.value as PlanInterval }))}>
+              <option value="MONTH">Mensual</option>
+              <option value="YEAR">Anual</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Moneda</label>
+            <input className="form-input" value={planForm.moneda} onChange={e => setPlanForm(f => ({ ...f, moneda: e.target.value }))} placeholder="ARS" />
           </div>
         </div>
-      )}
+        <div className="form-group">
+          <label className="form-label">Precio *</label>
+          <input className="form-input" type="number" step="0.01" value={planForm.precio as string} onChange={e => setPlanForm(f => ({ ...f, precio: e.target.value }))} placeholder="0.00" />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+          <div className="form-group">
+            <label className="form-label">Máx. Usuarios</label>
+            <input className="form-input" type="number" value={planForm.maxUsuarios ?? ''} onChange={e => setPlanForm(f => ({ ...f, maxUsuarios: e.target.value ? parseInt(e.target.value) : undefined }))} placeholder="∞" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Máx. Sucursales</label>
+            <input className="form-input" type="number" value={planForm.maxSucursales ?? ''} onChange={e => setPlanForm(f => ({ ...f, maxSucursales: e.target.value ? parseInt(e.target.value) : undefined }))} placeholder="∞" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Máx. Vehículos</label>
+            <input className="form-input" type="number" value={planForm.maxVehiculos ?? ''} onChange={e => setPlanForm(f => ({ ...f, maxVehiculos: e.target.value ? parseInt(e.target.value) : undefined }))} placeholder="∞" />
+          </div>
+        </div>
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={planForm.activo ?? true} onChange={e => setPlanForm(f => ({ ...f, activo: e.target.checked }))} />
+            Activo
+          </label>
+        </div>
+      </Modal>
 
       {/* ── MODAL: SUSCRIPCIÓN ── */}
-      {showSubModal && selectedConcSub && (
-        <div className="modal-overlay" onClick={() => setShowSubModal(false)}>
-          <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Gestionar Suscripción — {selectedConcSub.nombre}</h3>
-              <button className="btn-icon" onClick={() => setShowSubModal(false)}><X size={20} /></button>
-            </div>
-            <div className="modal-body">
-              {subscriptions[selectedConcSub.id]?.status === 'past_due' && (
-                <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem', color: '#ef4444' }}>
-                  <AlertTriangle size={16} />
-                  Suscripción vencida — se recomienda actualizar el estado
-                </div>
-              )}
-              <div className="form-group">
-                <label className="form-label">Plan *</label>
-                <select className="form-select" value={subForm.planId} onChange={e => setSubForm(f => ({ ...f, planId: parseInt(e.target.value) }))}>
-                  <option value={0}>— Seleccionar plan —</option>
-                  {planes.map(p => <option key={p.id} value={p.id}>{p.nombre} ({INTERVAL_LABELS[p.interval]})</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Estado</label>
-                <select className="form-select" value={subForm.status} onChange={e => setSubForm(f => ({ ...f, status: e.target.value as SubscriptionStatus }))}>
-                  {(Object.keys(SUB_STATUS_LABELS) as SubscriptionStatus[]).map(s => {
-                    const current = subscriptions[selectedConcSub.id]?.status;
-                    const allowed = current ? (NEXT_STATUSES[current] ?? []) : Object.keys(SUB_STATUS_LABELS) as SubscriptionStatus[];
-                    const isDisabled = current && s !== current && !allowed.includes(s);
-                    return <option key={s} value={s} disabled={!!isDisabled}>{SUB_STATUS_LABELS[s]}</option>;
-                  })}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Trial hasta</label>
-                <input className="form-input" type="date" value={subForm.trialEndsAt} onChange={e => setSubForm(f => ({ ...f, trialEndsAt: e.target.value }))} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Período desde</label>
-                  <input className="form-input" type="date" value={subForm.currentPeriodStart} onChange={e => setSubForm(f => ({ ...f, currentPeriodStart: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Período hasta</label>
-                  <input className="form-input" type="date" value={subForm.currentPeriodEnd} onChange={e => setSubForm(f => ({ ...f, currentPeriodEnd: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
+      {selectedConcSub && (
+        <Modal
+          isOpen={showSubModal}
+          onClose={() => setShowSubModal(false)}
+          title={`Gestionar Suscripción — ${selectedConcSub.nombre}`}
+          maxWidth="500px"
+          footer={(
+            <>
               <button className="btn btn-secondary" onClick={() => setShowSubModal(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleSaveSub} disabled={savingSub}>
                 {savingSub ? 'Guardando...' : 'Guardar'}
               </button>
+            </>
+          )}
+        >
+          {subscriptions[selectedConcSub.id]?.status === 'past_due' && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem', color: '#ef4444' }}>
+              <AlertTriangle size={16} />
+              Suscripción vencida — se recomienda actualizar el estado
+            </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Plan *</label>
+            <select className="form-select" value={subForm.planId} onChange={e => setSubForm(f => ({ ...f, planId: parseInt(e.target.value) }))}>
+              <option value={0}>— Seleccionar plan —</option>
+              {planes.map(p => <option key={p.id} value={p.id}>{p.nombre} ({INTERVAL_LABELS[p.interval]})</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Estado</label>
+            <select className="form-select" value={subForm.status} onChange={e => setSubForm(f => ({ ...f, status: e.target.value as SubscriptionStatus }))}>
+              {(Object.keys(SUB_STATUS_LABELS) as SubscriptionStatus[]).map(s => {
+                const current = subscriptions[selectedConcSub.id]?.status;
+                const allowed = current ? (NEXT_STATUSES[current] ?? []) : Object.keys(SUB_STATUS_LABELS) as SubscriptionStatus[];
+                const isDisabled = current && s !== current && !allowed.includes(s);
+                return <option key={s} value={s} disabled={!!isDisabled}>{SUB_STATUS_LABELS[s]}</option>;
+              })}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Trial hasta</label>
+            <input className="form-input" type="date" value={subForm.trialEndsAt} onChange={e => setSubForm(f => ({ ...f, trialEndsAt: e.target.value }))} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label">Período desde</label>
+              <input className="form-input" type="date" value={subForm.currentPeriodStart} onChange={e => setSubForm(f => ({ ...f, currentPeriodStart: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Período hasta</label>
+              <input className="form-input" type="date" value={subForm.currentPeriodEnd} onChange={e => setSubForm(f => ({ ...f, currentPeriodEnd: e.target.value }))} />
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── MODAL: NUEVA FACTURA ── */}
-      {showCreateInvModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateInvModal(false)}>
-          <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Nueva Factura</h3>
-              <button className="btn-icon" onClick={() => setShowCreateInvModal(false)}><X size={20} /></button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Concesionaria *</label>
-                <select
-                  className="form-select"
-                  value={invForm.concesionariaId}
-                  onChange={e => handleConcChangeInv(parseInt(e.target.value))}
-                >
-                  <option value={0}>— Seleccionar —</option>
-                  {concesionarias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-                {invFormSubLoading && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>Buscando suscripción...</div>}
-                {invForm.subscriptionId > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--color-success, #22c55e)', marginTop: 4 }}>✓ Suscripción #{invForm.subscriptionId} encontrada</div>}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Número</label>
-                  <input className="form-input" value={invForm.numero} onChange={e => setInvForm(f => ({ ...f, numero: e.target.value }))} placeholder="Auto" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Moneda</label>
-                  <input className="form-input" value={invForm.moneda} onChange={e => setInvForm(f => ({ ...f, moneda: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Período desde *</label>
-                  <input className="form-input" type="date" value={invForm.periodoDesde} onChange={e => setInvForm(f => ({ ...f, periodoDesde: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Período hasta *</label>
-                  <input className="form-input" type="date" value={invForm.periodoHasta} onChange={e => setInvForm(f => ({ ...f, periodoHasta: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Subtotal</label>
-                  <input className="form-input" type="number" step="0.01" value={invForm.subtotal} onChange={e => setInvForm(f => ({ ...f, subtotal: e.target.value }))} placeholder="0.00" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Impuestos</label>
-                  <input className="form-input" type="number" step="0.01" value={invForm.impuestos} onChange={e => setInvForm(f => ({ ...f, impuestos: e.target.value }))} placeholder="0.00" />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Total *</label>
-                <input className="form-input" type="number" step="0.01" value={invForm.total} onChange={e => setInvForm(f => ({ ...f, total: e.target.value }))} placeholder="0.00" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Vencimiento</label>
-                <input className="form-input" type="date" value={invForm.dueDate} onChange={e => setInvForm(f => ({ ...f, dueDate: e.target.value }))} />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowCreateInvModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleCreateInvoice} disabled={savingInv || !invForm.subscriptionId}>
-                {savingInv ? 'Creando...' : 'Crear Factura'}
-              </button>
-            </div>
+      <Modal
+        isOpen={showCreateInvModal}
+        onClose={() => setShowCreateInvModal(false)}
+        title="Nueva Factura"
+        maxWidth="500px"
+        footer={(
+          <>
+            <button className="btn btn-secondary" onClick={() => setShowCreateInvModal(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleCreateInvoice} disabled={savingInv || !invForm.subscriptionId}>
+              {savingInv ? 'Creando...' : 'Crear Factura'}
+            </button>
+          </>
+        )}
+      >
+        <div className="form-group">
+          <label className="form-label">Concesionaria *</label>
+          <select
+            className="form-select"
+            value={invForm.concesionariaId}
+            onChange={e => handleConcChangeInv(parseInt(e.target.value))}
+          >
+            <option value={0}>— Seleccionar —</option>
+            {concesionarias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
+          {invFormSubLoading && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>Buscando suscripción...</div>}
+          {invForm.subscriptionId > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--color-success, #22c55e)', marginTop: 4 }}>✓ Suscripción #{invForm.subscriptionId} encontrada</div>}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="form-group">
+            <label className="form-label">Número</label>
+            <input className="form-input" value={invForm.numero} onChange={e => setInvForm(f => ({ ...f, numero: e.target.value }))} placeholder="Auto" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Moneda</label>
+            <input className="form-input" value={invForm.moneda} onChange={e => setInvForm(f => ({ ...f, moneda: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Período desde *</label>
+            <input className="form-input" type="date" value={invForm.periodoDesde} onChange={e => setInvForm(f => ({ ...f, periodoDesde: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Período hasta *</label>
+            <input className="form-input" type="date" value={invForm.periodoHasta} onChange={e => setInvForm(f => ({ ...f, periodoHasta: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Subtotal</label>
+            <input className="form-input" type="number" step="0.01" value={invForm.subtotal} onChange={e => setInvForm(f => ({ ...f, subtotal: e.target.value }))} placeholder="0.00" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Impuestos</label>
+            <input className="form-input" type="number" step="0.01" value={invForm.impuestos} onChange={e => setInvForm(f => ({ ...f, impuestos: e.target.value }))} placeholder="0.00" />
           </div>
         </div>
-      )}
+        <div className="form-group">
+          <label className="form-label">Total *</label>
+          <input className="form-input" type="number" step="0.01" value={invForm.total} onChange={e => setInvForm(f => ({ ...f, total: e.target.value }))} placeholder="0.00" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Vencimiento</label>
+          <input className="form-input" type="date" value={invForm.dueDate} onChange={e => setInvForm(f => ({ ...f, dueDate: e.target.value }))} />
+        </div>
+      </Modal>
 
       {/* ── MODAL: DETALLE FACTURA / PAGOS ── */}
       {selectedInvoice && (
@@ -926,42 +919,41 @@ export default function BillingPage() {
       )}
 
       {/* ── MODAL: REGISTRAR PAGO ── */}
-      {showPayModal && payInvoice && (
-        <div className="modal-overlay" onClick={() => { setShowPayModal(false); setPayInvoice(null); }}>
-          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Registrar Pago — {payInvoice.numero ?? `Factura #${payInvoice.id}`}</h3>
-              <button className="btn-icon" onClick={() => { setShowPayModal(false); setPayInvoice(null); }}><X size={20} /></button>
-            </div>
-            <div className="modal-body">
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
-                <div>Total factura: <strong>{payInvoice.moneda} {parseFloat(payInvoice.total).toLocaleString('es-AR')}</strong></div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Monto *</label>
-                <input className="form-input" type="number" step="0.01" value={payForm.monto} onChange={e => setPayForm(f => ({ ...f, monto: e.target.value }))} placeholder="0.00" />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Moneda</label>
-                  <input className="form-input" value={payForm.moneda} onChange={e => setPayForm(f => ({ ...f, moneda: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Método</label>
-                  <select className="form-select" value={payForm.metodo} onChange={e => setPayForm(f => ({ ...f, metodo: e.target.value as MetodoPago }))}>
-                    {METODOS.map(m => <option key={m} value={m} style={{ textTransform: 'capitalize' }}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
+      {payInvoice && (
+        <Modal
+          isOpen={showPayModal}
+          onClose={() => { setShowPayModal(false); setPayInvoice(null); }}
+          title={`Registrar Pago — ${payInvoice.numero ?? `Factura #${payInvoice.id}`}`}
+          maxWidth="420px"
+          footer={(
+            <>
               <button className="btn btn-secondary" onClick={() => { setShowPayModal(false); setPayInvoice(null); }}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleRegisterPayment} disabled={savingPay}>
                 {savingPay ? 'Guardando...' : 'Registrar Pago'}
               </button>
+            </>
+          )}
+        >
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            <div>Total factura: <strong>{payInvoice.moneda} {parseFloat(payInvoice.total).toLocaleString('es-AR')}</strong></div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Monto *</label>
+            <input className="form-input" type="number" step="0.01" value={payForm.monto} onChange={e => setPayForm(f => ({ ...f, monto: e.target.value }))} placeholder="0.00" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label">Moneda</label>
+              <input className="form-input" value={payForm.moneda} onChange={e => setPayForm(f => ({ ...f, moneda: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Método</label>
+              <select className="form-select" value={payForm.metodo} onChange={e => setPayForm(f => ({ ...f, metodo: e.target.value as MetodoPago }))}>
+                {METODOS.map(m => <option key={m} value={m} style={{ textTransform: 'capitalize' }}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+              </select>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

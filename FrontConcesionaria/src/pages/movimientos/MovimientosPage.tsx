@@ -5,6 +5,7 @@ import { sucursalesApi } from '../../api/sucursales.api';
 import { useUIStore } from '../../store/uiStore';
 import Badge, { type BadgeVariant } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
 import {
     Plus, RefreshCw,
     ArrowLeftRight, ChevronLeft, ChevronRight,
@@ -98,7 +99,7 @@ const MovimientosPage = () => {
 
     useEffect(() => {
         loadMovimientos(page);
-    }, [page, filterVehiculo, filterDesde, filterHasta]);
+    }, [page, loadMovimientos]);
 
     const handleClear = () => {
         setFilterVehiculo('');
@@ -300,68 +301,65 @@ const MovimientosPage = () => {
                 </Button>
             </div>
 
-            {/* Modal de Traslado */}
-            {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-box" style={{ maxWidth: '680px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">Orden de Movimiento Inter-Plaza</h2>
-                            <p className="text-sm text-muted">Asegúrese de que la unidad esté físicamente disponible para el traslado programado.</p>
-                        </header>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="Orden de Movimiento Inter-Plaza"
+                subtitle="Asegúrese de que la unidad esté físicamente disponible para el traslado programado."
+                maxWidth="680px"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+                        <Button variant="primary" onClick={handleSubmit} loading={saving}>
+                            <ArrowLeftRight size={16} />
+                            Confirmar Orden
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-6">
+                    <div className="form-group">
+                        <label className="form-label">Unidad Vehicular a Movilizar *</label>
+                        <select className="form-input text-lg font-bold" value={form.vehiculoId} onChange={e => setForm(f => ({ ...f, vehiculoId: e.target.value }))}>
+                            <option value="">Selección de unidad por Dominio o Modelo...</option>
+                            {vehiculos.map(v => (
+                                <option key={v.id} value={v.id}>
+                                    {`${v.marca} ${v.modelo} ${v.version ? v.version : ''} (${v.dominio || 'SIN PATENTE'})`.toUpperCase()}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                        <div className="modal-body space-y-6">
-                            <div className="form-group">
-                                <label className="form-label text-indigo-400">Unidad Vehicular a Movilizar *</label>
-                                <select className="form-input text-lg font-bold" value={form.vehiculoId} onChange={e => setForm(f => ({ ...f, vehiculoId: e.target.value }))}>
-                                    <option value="">Selección de unidad por Dominio o Modelo...</option>
-                                    {vehiculos.map(v => (
-                                        <option key={v.id} value={v.id}>
-                                            {`${v.marca} ${v.modelo} ${v.version ? v.version : ''} (${v.dominio || 'SIN PATENTE'})`.toUpperCase()}
-                                        </option>
-                                    ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                            <label className="form-label">Plaza de Destino *</label>
+                            <div className="relative">
+                                <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
+                                <select className="form-input pl-11" value={form.hastaSucursalId} onChange={e => setForm(f => ({ ...f, hastaSucursalId: e.target.value }))}>
+                                    <option value="">Seleccionar sucursal...</option>
+                                    {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
                                 </select>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Plaza de Destino *</label>
-                                    <div className="relative">
-                                        <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                                        <select className="form-input pl-11" value={form.hastaSucursalId} onChange={e => setForm(f => ({ ...f, hastaSucursalId: e.target.value }))}>
-                                            <option value="">Seleccionar surcursal...</option>
-                                            {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Fecha de Ejecución</label>
-                                    <input type="date" className="form-input" value={form.fechaMovimiento} onChange={e => setForm(f => ({ ...f, fechaMovimiento: e.target.value }))} />
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Justificación Operacional / Notas</label>
-                                <textarea className="form-input" rows={3} placeholder="Ej: Cumplimiento de reserva en sucursal Norte, rotación de showroom..." value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} style={{ resize: 'none' }} />
-                            </div>
-
-                            {formError && (
-                                <div className="p-4 bg-red-900/10 border border-red-500/20 rounded-2xl text-red-500 text-xs flex items-center gap-3">
-                                    <AlertCircle size={16} />
-                                    <span className="font-bold uppercase tracking-tight">{formError}</span>
-                                </div>
-                            )}
                         </div>
-
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
-                            <Button variant="primary" onClick={handleSubmit} loading={saving} className="min-w-[200px]">
-                                <ArrowLeftRight size={18} />
-                                Confirmar Orden de Traslado
-                            </Button>
-                        </footer>
+                        <div className="form-group">
+                            <label className="form-label">Fecha de Ejecución</label>
+                            <input type="date" className="form-input" value={form.fechaMovimiento} onChange={e => setForm(f => ({ ...f, fechaMovimiento: e.target.value }))} />
+                        </div>
                     </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Justificación Operacional / Notas</label>
+                        <textarea className="form-input" rows={3} placeholder="Ej: Cumplimiento de reserva en sucursal Norte, rotación de showroom..." value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} style={{ resize: 'none' }} />
+                    </div>
+
+                    {formError && (
+                        <div className="uploader-alert uploader-alert-error">
+                            <AlertCircle size={14} />
+                            <span>{formError}</span>
+                        </div>
+                    )}
                 </div>
-            )}
+            </Modal>
 
             <style>{`
                 .icon-badge {

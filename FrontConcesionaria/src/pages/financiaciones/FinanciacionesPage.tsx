@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type MouseEvent } from 'react';
 import { financiacionesApi, type CreateFinanciacionDto, type PagarCuotaDto } from '../../api/financiaciones.api';
 import { clientesApi } from '../../api/clientes.api';
 import { usuariosApi } from '../../api/usuarios.api';
 import { ventasApi } from '../../api/ventas.api';
 import { useUIStore } from '../../store/uiStore';
-import Badge from '../../components/ui/Badge';
+import Badge, { type BadgeVariant } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
-    Plus, Search, Eye, Trash2, X, RefreshCw,
+    Plus, Search, Eye, Trash2, RefreshCw,
     CreditCard, DollarSign, ChevronLeft,
     ChevronRight, Calendar, User, ShoppingBag,
     AlertCircle, CheckCircle2, Car, TrendingUp
@@ -29,17 +31,66 @@ interface FinForm {
     observaciones: string;
 }
 
+// Refs de catálogos
+interface ClienteRef {
+    id: number;
+    nombre: string;
+}
+
+interface CobradorRef {
+    id: number;
+    nombre: string;
+}
+
+interface VehiculoRef {
+    marca: string;
+    modelo: string;
+    dominio?: string;
+}
+
+interface VentaRef {
+    id: number;
+    cliente?: { nombre: string };
+    vehiculo?: VehiculoRef;
+}
+
+// Cuota de un plan de financiación
+interface Cuota {
+    id: number;
+    nroCuota: number;
+    vencimiento: string;
+    montoCuota: number | string;
+    saldoCuota: number | string;
+    montoCapital?: number | string;
+    montoInteres?: number | string;
+    estado: EstadoCuota;
+}
+
+// Fila de financiación devuelta por la API
+interface FinanciacionRow {
+    id: number;
+    ventaId: number;
+    clienteId: number;
+    cobradorId?: number;
+    estado: EstadoFinanciacion;
+    montoFinanciado: number | string;
+    cuotas: number;
+    diaVencimiento: number;
+    cliente?: { nombre: string };
+    cobrador?: { nombre: string };
+    venta?: { vehiculo?: VehiculoRef };
+    cuotasPlan?: Cuota[];
+}
+
 // ─── Status maps ─────────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const finStatusMap: Record<EstadoFinanciacion, { label: string; variant: any }> = {
+const finStatusMap: Record<EstadoFinanciacion, { label: string; variant: BadgeVariant }> = {
     activa: { label: 'Activa', variant: 'success' },
     cancelada: { label: 'Cancelada', variant: 'default' },
     en_mora: { label: 'En mora', variant: 'danger' },
     refinanciada: { label: 'Refinanciada', variant: 'info' },
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const cuotaStatusMap: Record<EstadoCuota, { label: string; variant: any }> = {
+const cuotaStatusMap: Record<EstadoCuota, { label: string; variant: BadgeVariant }> = {
     pendiente: { label: 'Pendiente', variant: 'warning' },
     parcial: { label: 'Parcial', variant: 'info' },
     pagada: { label: 'Pagada', variant: 'success' },
@@ -70,16 +121,12 @@ const emptyPago = (): PagarCuotaDto => ({ monto: 0, metodo: 'efectivo', referenc
 // ─── Componente principal ─────────────────────────────────────────────────────
 const FinanciacionesPage = () => {
     // Catálogos
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [clientes, setClientes] = useState<any[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [cobradores, setCobradores] = useState<any[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [ventas, setVentas] = useState<any[]>([]);
+    const [clientes, setClientes] = useState<ClienteRef[]>([]);
+    const [cobradores, setCobradores] = useState<CobradorRef[]>([]);
+    const [ventas, setVentas] = useState<VentaRef[]>([]);
 
     // Lista
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [financiaciones, setFinanciaciones] = useState<any[]>([]);
+    const [financiaciones, setFinanciaciones] = useState<FinanciacionRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -94,13 +141,11 @@ const FinanciacionesPage = () => {
     const [saving, setSaving] = useState(false);
 
     const [detailId, setDetailId] = useState<number | null>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [detail, setDetail] = useState<any>(null);
+    const [detail, setDetail] = useState<FinanciacionRow | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
     // Pagar cuota sub-modal
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [pagarCuota, setPagarCuota] = useState<any>(null); // cuota object
+    const [pagarCuota, setPagarCuota] = useState<Cuota | null>(null);
     const [pagoForm, setPagoForm] = useState<PagarCuotaDto>(emptyPago());
     const [savingPago, setSavingPago] = useState(false);
 
@@ -114,9 +159,9 @@ const FinanciacionesPage = () => {
                 usuariosApi.getAll({}, { limit: 1000 }),
                 ventasApi.getAll({}, { limit: 1000 }),
             ]);
-            setClientes(c.results ?? []);
-            setCobradores((u as { results?: unknown[] }).results ?? []);
-            setVentas(v.results ?? []);
+            setClientes((c.results ?? []) as ClienteRef[]);
+            setCobradores(((u as { results?: CobradorRef[] }).results ?? []));
+            setVentas((v.results ?? []) as VentaRef[]);
         } catch { /* silencioso */ }
     }, []);
 
@@ -124,12 +169,11 @@ const FinanciacionesPage = () => {
     const loadList = useCallback(async (pg = page) => {
         setLoading(true);
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const filters: any = {};
+            const filters: Record<string, unknown> = {};
             if (filterEstado) filters.estado = filterEstado;
             const res = await financiacionesApi.getAll(filters, { limit: 15, page: pg });
-            const rawData = (res as { data?: { data?: { results?: unknown[], totalPages?: number } | unknown[] } })?.data?.data;
-            const results = (rawData as { results?: unknown[] })?.results;
+            const rawData = (res as { data?: { data?: { results?: FinanciacionRow[], totalPages?: number } | FinanciacionRow[] } })?.data?.data;
+            const results = (rawData as { results?: FinanciacionRow[] })?.results;
             setFinanciaciones(Array.isArray(results) ? results : Array.isArray(rawData) ? rawData : []);
             setTotalPages((rawData as { totalPages?: number })?.totalPages ?? 1);
         } catch {
@@ -148,7 +192,10 @@ const FinanciacionesPage = () => {
         setDetail(null);
         try {
             const res = await financiacionesApi.getById(id);
-            setDetail((res as { data?: { data?: unknown } })?.data?.data ?? (res as { data?: unknown })?.data);
+            const payload = (res as { data?: { data?: FinanciacionRow } })?.data?.data
+                ?? (res as { data?: FinanciacionRow })?.data
+                ?? null;
+            setDetail(payload);
         } catch {
             addToast('Error al recuperar expediente digital', 'error');
         }
@@ -157,7 +204,10 @@ const FinanciacionesPage = () => {
     const refreshDetail = async (id: number) => {
         try {
             const res = await financiacionesApi.getById(id);
-            setDetail((res as { data?: { data?: unknown } })?.data?.data ?? (res as { data?: unknown })?.data);
+            const payload = (res as { data?: { data?: FinanciacionRow } })?.data?.data
+                ?? (res as { data?: FinanciacionRow })?.data
+                ?? null;
+            setDetail(payload);
         } catch { /* silencioso */ }
     };
 
@@ -220,16 +270,15 @@ const FinanciacionesPage = () => {
     };
 
     // ── Pagar cuota ──────────────────────────────────────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const openPagarCuota = (cuota: any) => {
+    const openPagarCuota = (cuota: Cuota) => {
         setPagarCuota(cuota);
         setPagoForm({ ...emptyPago(), monto: Number(cuota.saldoCuota) });
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handlePagarCuota = async (e: any) => {
+    const handlePagarCuota = async (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault(); return;
         if (pagoForm.monto <= 0) { addToast('El importe de recaudación debe ser mayor a 0', 'error'); return; }
+        if (!pagarCuota) return;
         setSavingPago(true);
         try {
             await financiacionesApi.pagarCuota(pagarCuota.id, pagoForm);
@@ -420,13 +469,13 @@ const FinanciacionesPage = () => {
                                     <td>
                                         <div className="flex flex-col gap-1.5 min-w-[140px]">
                                             <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter">
-                                                <span className="text-accent-light">{(f.cuotasPlan?.filter((c: any) => c.estado === 'pagada').length ?? 0)} de {f.cuotas} cuotas</span>
-                                                <span className="text-white">{Math.round(((f.cuotasPlan?.filter((c: any) => c.estado === 'pagada').length ?? 0) / f.cuotas) * 100)}%</span>
+                                                <span className="text-accent-light">{(f.cuotasPlan?.filter((c: { estado: string }) => c.estado === 'pagada').length ?? 0)} de {f.cuotas} cuotas</span>
+                                                <span className="text-white">{Math.round(((f.cuotasPlan?.filter((c: { estado: string }) => c.estado === 'pagada').length ?? 0) / f.cuotas) * 100)}%</span>
                                             </div>
                                             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                                 <div
                                                     className="bg-accent h-full transition-all duration-700"
-                                                    style={{ width: `${((f.cuotasPlan?.filter((c: any) => c.estado === 'pagada').length ?? 0) / f.cuotas) * 100}%` }}
+                                                    style={{ width: `${((f.cuotasPlan?.filter((c: { estado: string }) => c.estado === 'pagada').length ?? 0) / f.cuotas) * 100}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -465,324 +514,300 @@ const FinanciacionesPage = () => {
             )}
 
             {/* MODAL CREAR PAN DE PAGOS */}
-            {createOpen && (
-                <div className="modal-overlay" onClick={() => setCreateOpen(false)}>
-                    <div className="modal-box" style={{ maxWidth: '820px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">Instrumentación de Crédito</h2>
-                            <p className="text-sm text-muted">Asegúrese de validar la solvencia del acreedor antes de activar el plan.</p>
-                        </header>
-
-                        <div className="modal-body space-y-8">
-                            <div className="form-group col-span-2">
-                                <label className="form-label text-blue-400">Venta de Origen (Documento Base) *</label>
-                                <select className="form-input text-lg font-bold" value={form.ventaId || ''} onChange={e => setForm(f => ({ ...f, ventaId: +e.target.value }))}>
-                                    <option value="">SELECCIONAR CONTRATO DE TRANSFERENCIA...</option>
-                                    {ventas.map(v => (
-                                        <option key={v.id} value={v.id}>
-                                            {`#${String(v.id).padStart(5, '0')} — CLIENTE: ${v.cliente?.nombre?.toUpperCase()} — VEHÍCULO: ${v.vehiculo?.marca?.toUpperCase()} ${v.vehiculo?.modelo?.toUpperCase()}`}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Titular Exigible *</label>
-                                    <select className="form-input" value={form.clienteId || ''} onChange={e => setForm(f => ({ ...f, clienteId: +e.target.value }))}>
-                                        <option value="">PERSONA FÍSICA / JURÍDICA...</option>
-                                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Oficial Responsable</label>
-                                    <select className="form-input" value={form.cobradorId || ''} onChange={e => setForm(f => ({ ...f, cobradorId: +e.target.value }))}>
-                                        <option value="">ASIGNAR GESTOR RECAUDADOR...</option>
-                                        {cobradores.map(u => <option key={u.id} value={u.id}>{u.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Capital Liquidado *</label>
-                                    <div className="relative">
-                                        <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                                        <input type="number" className="form-input pl-10 font-bold" value={form.montoFinanciado || ''}
-                                            onChange={e => setForm(f => ({ ...f, montoFinanciado: +e.target.value }))} placeholder="0.00" />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Plan de Cuotas *</label>
-                                    <select className="form-input" value={form.cuotas} onChange={e => setForm(f => ({ ...f, cuotas: +e.target.value }))}>
-                                        {[1, 3, 6, 12, 18, 24, 36, 48, 60].map(n => <option key={n} value={n}>{n} CUOTAS MENSUALES</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">INTERÉS MENSUAL (%)</label>
-                                    <div className="relative">
-                                        <TrendingUp size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
-                                        <input type="number" step="0.1" className="form-input pl-10" value={form.tasaMensual}
-                                            onChange={e => setForm(f => ({ ...f, tasaMensual: e.target.value }))} placeholder="0.0" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Fecha de Inicio Contable</label>
-                                    <input type="date" className="form-input" value={form.fechaInicio} onChange={e => setForm(f => ({ ...f, fechaInicio: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Día Fijo de Cobro</label>
-                                    <select className="form-input" value={form.diaVencimiento} onChange={e => setForm(f => ({ ...f, diaVencimiento: +e.target.value }))}>
-                                        {[...Array(28)].map((_, i) => <option key={i + 1} value={i + 1}>DÍA {i + 1} DE CADA MES</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Notas del Contrato (Observaciones)</label>
-                                <textarea className="form-input" rows={2} value={form.observaciones}
-                                    onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))} placeholder="ESPECIFIQUE GARANTÍAS O ACUERDOS EXCEPCIONALES..." style={{ resize: 'none' }} />
-                            </div>
-
-                            {form.montoFinanciado > 0 && (
-                                <div className="p-6 bg-accent/5 border border-accent/20 rounded-3xl flex justify-between items-center shadow-glow-sm">
-                                    <div>
-                                        <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">Impacto de Cuota Base</p>
-                                        <p className="text-3xl font-black text-white">${calcMontoCuota().toLocaleString('es-AR')}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Exigibilidad Total</p>
-                                        <p className="text-xl font-bold text-white/50">${Number(form.montoFinanciado).toLocaleString('es-AR')}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                            <Button variant="primary" className="min-w-[220px]" onClick={handleCreate} loading={saving}>
-                                Instrumentar y Activar Plan
-                            </Button>
-                        </footer>
+            <Modal
+                isOpen={createOpen}
+                onClose={() => setCreateOpen(false)}
+                title="Instrumentación de Crédito"
+                subtitle="Asegúrese de validar la solvencia del acreedor antes de activar el plan."
+                maxWidth="820px"
+                footer={(
+                    <>
+                        <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                        <Button variant="primary" className="min-w-[220px]" onClick={handleCreate} loading={saving}>
+                            Instrumentar y Activar Plan
+                        </Button>
+                    </>
+                )}
+            >
+                <div className="space-y-8">
+                    <div className="form-group col-span-2">
+                        <label className="form-label text-blue-400">Venta de Origen (Documento Base) *</label>
+                        <select className="form-input text-lg font-bold" value={form.ventaId || ''} onChange={e => setForm(f => ({ ...f, ventaId: +e.target.value }))}>
+                            <option value="">SELECCIONAR CONTRATO DE TRANSFERENCIA...</option>
+                            {ventas.map(v => (
+                                <option key={v.id} value={v.id}>
+                                    {`#${String(v.id).padStart(5, '0')} — CLIENTE: ${v.cliente?.nombre?.toUpperCase()} — VEHÍCULO: ${v.vehiculo?.marca?.toUpperCase()} ${v.vehiculo?.modelo?.toUpperCase()}`}
+                                </option>
+                            ))}
+                        </select>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="form-group">
+                            <label className="form-label">Titular Exigible *</label>
+                            <select className="form-input" value={form.clienteId || ''} onChange={e => setForm(f => ({ ...f, clienteId: +e.target.value }))}>
+                                <option value="">PERSONA FÍSICA / JURÍDICA...</option>
+                                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Oficial Responsable</label>
+                            <select className="form-input" value={form.cobradorId || ''} onChange={e => setForm(f => ({ ...f, cobradorId: +e.target.value }))}>
+                                <option value="">ASIGNAR GESTOR RECAUDADOR...</option>
+                                {cobradores.map(u => <option key={u.id} value={u.id}>{u.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="form-group">
+                            <label className="form-label">Capital Liquidado *</label>
+                            <div className="relative">
+                                <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
+                                <input type="number" className="form-input pl-10 font-bold" value={form.montoFinanciado || ''}
+                                    onChange={e => setForm(f => ({ ...f, montoFinanciado: +e.target.value }))} placeholder="0.00" />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Plan de Cuotas *</label>
+                            <select className="form-input" value={form.cuotas} onChange={e => setForm(f => ({ ...f, cuotas: +e.target.value }))}>
+                                {[1, 3, 6, 12, 18, 24, 36, 48, 60].map(n => <option key={n} value={n}>{n} CUOTAS MENSUALES</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">INTERÉS MENSUAL (%)</label>
+                            <div className="relative">
+                                <TrendingUp size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
+                                <input type="number" step="0.1" className="form-input pl-10" value={form.tasaMensual}
+                                    onChange={e => setForm(f => ({ ...f, tasaMensual: e.target.value }))} placeholder="0.0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="form-group">
+                            <label className="form-label">Fecha de Inicio Contable</label>
+                            <input type="date" className="form-input" value={form.fechaInicio} onChange={e => setForm(f => ({ ...f, fechaInicio: e.target.value }))} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Día Fijo de Cobro</label>
+                            <select className="form-input" value={form.diaVencimiento} onChange={e => setForm(f => ({ ...f, diaVencimiento: +e.target.value }))}>
+                                {[...Array(28)].map((_, i) => <option key={i + 1} value={i + 1}>DÍA {i + 1} DE CADA MES</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Notas del Contrato (Observaciones)</label>
+                        <textarea className="form-input" rows={2} value={form.observaciones}
+                            onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))} placeholder="ESPECIFIQUE GARANTÍAS O ACUERDOS EXCEPCIONALES..." style={{ resize: 'none' }} />
+                    </div>
+
+                    {form.montoFinanciado > 0 && (
+                        <div className="p-6 bg-accent/5 border border-accent/20 rounded-3xl flex justify-between items-center shadow-glow-sm">
+                            <div>
+                                <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">Impacto de Cuota Base</p>
+                                <p className="text-3xl font-black text-white">${calcMontoCuota().toLocaleString('es-AR')}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Exigibilidad Total</p>
+                                <p className="text-xl font-bold text-white/50">${Number(form.montoFinanciado).toLocaleString('es-AR')}</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            )}
+            </Modal>
 
             {/* MODAL EXPEDIENTE DIGITAL (DETALLE) */}
-            {detailId !== null && (
-                <div className="modal-overlay" onClick={() => { setDetailId(null); setDetail(null); }}>
-                    <div className="modal-box" style={{ maxWidth: '1000px' }} onClick={e => e.stopPropagation()}>
-                        {!detail ? (
-                            <div className="p-20 text-center"><RefreshCw className="animate-spin text-accent mx-auto mb-4" size={48} /><p className="text-xs font-black text-muted uppercase tracking-[0.3em]">Recuperando expediente financiero...</p></div>
-                        ) : (
-                            <>
-                                <header className="modal-header border-b border-white/5 pb-8 mb-8">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-6">
-                                            <div className="w-16 h-16 rounded-3xl bg-accent flex items-center justify-center text-white shadow-xl shadow-accent/40 ring-4 ring-accent/10">
-                                                <ShoppingBag size={32} />
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <h2 className="text-3xl font-black text-white">{detail.cliente?.nombre?.toUpperCase()}</h2>
-                                                    <Badge variant={finStatusMap[detail.estado as EstadoFinanciacion]?.variant ?? 'default'}>
-                                                        {finStatusMap[detail.estado as EstadoFinanciacion]?.label?.toUpperCase()}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-accent-light font-bold flex items-center gap-2">
-                                                    <Car size={16} />
-                                                    {detail.venta?.vehiculo ? `${detail.venta.vehiculo.marca} ${detail.venta.vehiculo.modelo} [${detail.venta.vehiculo.dominio}]`.toUpperCase() : `OP. VENTA NO ESPECIFICADA`.toUpperCase()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button className="p-3 bg-slate-800 rounded-2xl hover:bg-slate-700 transition-all text-slate-400" onClick={() => { setDetailId(null); setDetail(null); }}>
-                                            <X size={24} />
-                                        </button>
-                                    </div>
-                                </header>
+            <Modal
+                isOpen={detailId !== null}
+                onClose={() => { setDetailId(null); setDetail(null); }}
+                title={detail?.cliente?.nombre ? String(detail.cliente.nombre).toUpperCase() : 'Expediente Financiero'}
+                subtitle={detail?.venta?.vehiculo
+                    ? `${detail.venta.vehiculo.marca} ${detail.venta.vehiculo.modelo} [${detail.venta.vehiculo.dominio}]`.toUpperCase()
+                    : 'OP. VENTA NO ESPECIFICADA'}
+                maxWidth="900px"
+                footer={detail ? (
+                    <Button variant="secondary" className="px-10" onClick={() => { setDetailId(null); setDetail(null); }}>Cerrar Expediente</Button>
+                ) : undefined}
+            >
+                {!detail ? (
+                    <div className="p-20 text-center"><RefreshCw className="animate-spin text-accent mx-auto mb-4" size={48} /><p className="text-xs font-black text-muted uppercase tracking-[0.3em]">Recuperando expediente financiero...</p></div>
+                ) : (
+                    <div className="space-y-10">
+                        <div className="flex items-center gap-6">
+                            <div className="w-16 h-16 rounded-3xl bg-accent flex items-center justify-center text-white shadow-xl shadow-accent/40 ring-4 ring-accent/10">
+                                <ShoppingBag size={32} />
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant={finStatusMap[detail.estado as EstadoFinanciacion]?.variant ?? 'default'}>
+                                    {finStatusMap[detail.estado as EstadoFinanciacion]?.label?.toUpperCase()}
+                                </Badge>
+                                <p className="text-accent-light font-bold flex items-center gap-2">
+                                    <Car size={16} />
+                                    {detail.venta?.vehiculo ? `${detail.venta.vehiculo.marca} ${detail.venta.vehiculo.modelo} [${detail.venta.vehiculo.dominio}]`.toUpperCase() : `OP. VENTA NO ESPECIFICADA`.toUpperCase()}
+                                </p>
+                            </div>
+                        </div>
 
-                                <div className="modal-body space-y-10">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                        <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                            <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Exigibilidad Actual</span>
-                                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                            <p className="text-2xl font-black text-accent">${detail.cuotasPlan?.reduce((s: number, c: any) => s + Number(c.saldoCuota), 0).toLocaleString('es-AR')}</p>
-                                        </div>
-                                        <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                            <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Ratio de Cobro</span>
-                                            <p className="text-2xl font-black text-emerald-500">{detail.cuotasPlan?.filter((c: any) => c.estado === 'pagada').length} / {detail.cuotas}</p>
-                                        </div>
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        <div className="card glass p-4 text-center border-slate-700/30 font-bold"><span className="text-[10px] text-muted block mb-1">TOTAL CONTRATO</span>${((detail as any).cuotas ?? []).reduce((s: number, c: any) => s + ((c.montoCapital ?? 0) + (c.montoInteres ?? 0)), 0).toLocaleString('es-AR')}</div>
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        <div className="card glass p-4 text-center border-slate-700/30 font-bold"><span className="text-[10px] text-muted block mb-1">SALDO PENDIENTE</span>${((detail as any).cuotas ?? []).filter((c: any) => c.estado !== 'pagada').reduce((s: number, c: any) => s + ((c.montoCapital ?? 0) + (c.montoInteres ?? 0)), 0).toLocaleString('es-AR')}</div>
-                                        <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                            <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Valor de Cuota</span>
-                                            <p className="text-2xl font-black text-white">${(detail.montoFinanciado / detail.cuotas).toLocaleString('es-AR')}</p>
-                                        </div>
-                                        <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                            <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Cierre de Ciclo</span>
-                                            <p className="text-2xl font-black text-blue-400">DÍA {detail.diaVencimiento}</p>
-                                        </div>
-                                    </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Exigibilidad Actual</span>
+                                <p className="text-2xl font-black text-accent">${detail.cuotasPlan?.reduce((s: number, c: Cuota) => s + Number(c.saldoCuota), 0).toLocaleString('es-AR')}</p>
+                            </div>
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Ratio de Cobro</span>
+                                <p className="text-2xl font-black text-emerald-500">{detail.cuotasPlan?.filter((c: { estado: string }) => c.estado === 'pagada').length} / {detail.cuotas}</p>
+                            </div>
+                            <div className="card glass p-4 text-center border-slate-700/30 font-bold"><span className="text-[10px] text-muted block mb-1">TOTAL CONTRATO</span>${(detail.cuotasPlan ?? []).reduce((s: number, c: Cuota) => s + (Number(c.montoCapital ?? 0) + Number(c.montoInteres ?? 0)), 0).toLocaleString('es-AR')}</div>
+                            <div className="card glass p-4 text-center border-slate-700/30 font-bold"><span className="text-[10px] text-muted block mb-1">SALDO PENDIENTE</span>${(detail.cuotasPlan ?? []).filter((c: Cuota) => c.estado !== 'pagada').reduce((s: number, c: Cuota) => s + (Number(c.montoCapital ?? 0) + Number(c.montoInteres ?? 0)), 0).toLocaleString('es-AR')}</div>
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Valor de Cuota</span>
+                                <p className="text-2xl font-black text-white">${(detail.montoFinanciado / detail.cuotas).toLocaleString('es-AR')}</p>
+                            </div>
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Cierre de Ciclo</span>
+                                <p className="text-2xl font-black text-blue-400">DÍA {detail.diaVencimiento}</p>
+                            </div>
+                        </div>
 
-                                    {finTransitions[detail.estado as EstadoFinanciacion]?.length > 0 && (
-                                        <div className="p-6 bg-slate-900/80 border border-slate-700/50 rounded-3xl flex items-center justify-between">
-                                            <div>
-                                                <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Control de Gestión Legal</h4>
-                                                <p className="text-xs text-muted">Transiciones de auditoría para el estado del contrato.</p>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                {finTransitions[detail.estado as EstadoFinanciacion].map(t => (
-                                                    <Button
-                                                        key={t.next}
-                                                        variant={t.next === 'cancelada' ? 'secondary' : t.next === 'en_mora' ? 'danger' : 'primary'}
-                                                        size="sm"
-                                                        onClick={() => handleCambioEstado(detail.id, t.next)}
-                                                    >
-                                                        {t.label.toUpperCase()}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-col gap-4">
-                                        <h3 className="text-lg font-black text-white uppercase tracking-tighter flex items-center gap-2">
-                                            <Calendar size={18} className="text-accent" /> Historial Analítico de Recaudación
-                                        </h3>
-                                        <div className="table-container border-white/5 overflow-hidden">
-                                            <table className="data-table">
-                                                <thead className="bg-slate-900/60">
-                                                    <tr>
-                                                        <th>Período</th>
-                                                        <th>Vencimiento</th>
-                                                        <th>Cuota Nominal</th>
-                                                        <th>Deuda Residual</th>
-                                                        <th>Estado</th>
-                                                        <th style={{ textAlign: 'right' }}>Operatividad</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                    {detail.cuotasPlan?.map((c: any) => (
-                                                        <tr key={c.id}>
-                                                            <td className="font-black text-white"># {c.nroCuota}</td>
-                                                            <td className="font-mono text-xs text-slate-400">{new Date(c.vencimiento).toLocaleDateString('es-AR')}</td>
-                                                            <td className="font-bold text-white">${Number(c.montoCuota).toLocaleString('es-AR')}</td>
-                                                            <td className="font-black text-accent-light">${Number(c.saldoCuota).toLocaleString('es-AR')}</td>
-                                                            <td>
-                                                                <Badge variant={cuotaStatusMap[c.estado as EstadoCuota]?.variant ?? 'default'}>
-                                                                    {cuotaStatusMap[c.estado as EstadoCuota]?.label.toUpperCase()}
-                                                                </Badge>
-                                                            </td>
-                                                            <td style={{ textAlign: 'right' }}>
-                                                                {(c.estado === 'pendiente' || c.estado === 'parcial' || c.estado === 'vencida') && (
-                                                                    <Button variant="primary" size="sm" onClick={() => openPagarCuota(c)}>
-                                                                        RECAUDAR
-                                                                    </Button>
-                                                                )}
-                                                                {c.estado === 'pagada' && <CheckCircle2 size={20} className="text-emerald-500 ml-auto" />}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                                <footer className="modal-footer mt-8 p-0 border-none bg-transparent flex justify-end">
-                                    <Button variant="secondary" className="px-10" onClick={() => { setDetailId(null); setDetail(null); }}>Cerrar Expediente</Button>
-                                </footer>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* SUB-MODAL RECAUDACIÓN (PAGAR CUOTA) */}
-            {pagarCuota && (
-                <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setPagarCuota(null)}>
-                    <div className="modal-box" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">Certificación de Cobro</h2>
-                            <p className="text-sm text-muted">Valide el ingreso del capital antes de confirmar.</p>
-                        </header>
-                        <div className="modal-body space-y-8">
-                            <div className="p-6 bg-slate-900/60 rounded-3xl border border-accent/20 flex justify-between items-center shadow-glow-sm">
+                        {finTransitions[detail.estado as EstadoFinanciacion]?.length > 0 && (
+                            <div className="p-6 bg-slate-900/80 border border-slate-700/50 rounded-3xl flex items-center justify-between">
                                 <div>
-                                    <span className="text-[10px] font-black text-muted block mb-1">CONCILIACIÓN CUOTA #{pagarCuota.nroCuota}</span>
-                                    <p className="text-xs text-accent-light font-bold">FECHA LÍMITE: {new Date(pagarCuota.vencimiento).toLocaleDateString()}</p>
+                                    <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Control de Gestión Legal</h4>
+                                    <p className="text-xs text-muted">Transiciones de auditoría para el estado del contrato.</p>
                                 </div>
-                                <div className="text-right">
-                                    <span className="text-[10px] font-black text-muted block mb-1">EXIGIBILIDAD</span>
-                                    <p className="text-2xl font-black text-white">${Number(pagarCuota.saldoCuota).toLocaleString('es-AR')}</p>
+                                <div className="flex gap-3">
+                                    {finTransitions[detail.estado as EstadoFinanciacion].map(t => (
+                                        <Button
+                                            key={t.next}
+                                            variant={t.next === 'cancelada' ? 'secondary' : t.next === 'en_mora' ? 'danger' : 'primary'}
+                                            size="sm"
+                                            onClick={() => handleCambioEstado(detail.id, t.next)}
+                                        >
+                                            {t.label.toUpperCase()}
+                                        </Button>
+                                    ))}
                                 </div>
                             </div>
+                        )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="form-group col-span-2">
-                                    <label className="form-label">Recaudación Efectiva (ARS) *</label>
-                                    <div className="relative">
-                                        <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                                        <input type="number" className="form-input pl-10 font-black text-lg" value={pagoForm.monto || ''}
-                                            onChange={e => setPagoForm(f => ({ ...f, monto: +e.target.value }))} />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Vía de Ingreso *</label>
-                                    <select className="form-input" value={pagoForm.metodo} onChange={e => setPagoForm(f => ({ ...f, metodo: e.target.value as PagarCuotaDto['metodo'] }))}>
-                                        {Object.entries(metodoLabels).map(([k, v]) => <option key={k} value={k}>{v.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Fecha del Pago</label>
-                                    <input type="date" className="form-input" value={pagoForm.fechaPago ?? today()}
-                                        onChange={e => setPagoForm(f => ({ ...f, fechaPago: e.target.value }))} />
+                        <div className="flex flex-col gap-4">
+                            <h3 className="text-lg font-black text-white uppercase tracking-tighter flex items-center gap-2">
+                                <Calendar size={18} className="text-accent" /> Historial Analítico de Recaudación
+                            </h3>
+                            <div className="table-container border-white/5 overflow-hidden">
+                                <table className="data-table">
+                                    <thead className="bg-slate-900/60">
+                                        <tr>
+                                            <th>Período</th>
+                                            <th>Vencimiento</th>
+                                            <th>Cuota Nominal</th>
+                                            <th>Deuda Residual</th>
+                                            <th>Estado</th>
+                                            <th style={{ textAlign: 'right' }}>Operatividad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {detail.cuotasPlan?.map((c: Cuota) => (
+                                            <tr key={c.id}>
+                                                <td className="font-black text-white"># {c.nroCuota}</td>
+                                                <td className="font-mono text-xs text-slate-400">{new Date(c.vencimiento).toLocaleDateString('es-AR')}</td>
+                                                <td className="font-bold text-white">${Number(c.montoCuota).toLocaleString('es-AR')}</td>
+                                                <td className="font-black text-accent-light">${Number(c.saldoCuota).toLocaleString('es-AR')}</td>
+                                                <td>
+                                                    <Badge variant={cuotaStatusMap[c.estado as EstadoCuota]?.variant ?? 'default'}>
+                                                        {cuotaStatusMap[c.estado as EstadoCuota]?.label.toUpperCase()}
+                                                    </Badge>
+                                                </td>
+                                                <td style={{ textAlign: 'right' }}>
+                                                    {(c.estado === 'pendiente' || c.estado === 'parcial' || c.estado === 'vencida') && (
+                                                        <Button variant="primary" size="sm" onClick={() => openPagarCuota(c)}>
+                                                            RECAUDAR
+                                                        </Button>
+                                                    )}
+                                                    {c.estado === 'pagada' && <CheckCircle2 size={20} className="text-emerald-500 ml-auto" />}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* SUB-MODAL RECAUDACIÓN (PAGAR CUOTA) */}
+            <Modal
+                isOpen={!!pagarCuota}
+                onClose={() => setPagarCuota(null)}
+                title="Certificación de Cobro"
+                subtitle="Valide el ingreso del capital antes de confirmar."
+                maxWidth="520px"
+                footer={(
+                    <>
+                        <Button variant="secondary" onClick={() => setPagarCuota(null)}>Abortar</Button>
+                        <Button variant="primary" style={{ flex: 1 }} onClick={handlePagarCuota} loading={savingPago}>
+                            Efectivizar Ingreso
+                        </Button>
+                    </>
+                )}
+            >
+                {pagarCuota && (
+                    <div className="space-y-8">
+                        <div className="p-6 bg-slate-900/60 rounded-3xl border border-accent/20 flex justify-between items-center shadow-glow-sm">
+                            <div>
+                                <span className="text-[10px] font-black text-muted block mb-1">CONCILIACIÓN CUOTA #{pagarCuota.nroCuota}</span>
+                                <p className="text-xs text-accent-light font-bold">FECHA LÍMITE: {new Date(pagarCuota.vencimiento).toLocaleDateString()}</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[10px] font-black text-muted block mb-1">EXIGIBILIDAD</span>
+                                <p className="text-2xl font-black text-white">${Number(pagarCuota.saldoCuota).toLocaleString('es-AR')}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="form-group col-span-2">
+                                <label className="form-label">Recaudación Efectiva (ARS) *</label>
+                                <div className="relative">
+                                    <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
+                                    <input type="number" className="form-input pl-10 font-black text-lg" value={pagoForm.monto || ''}
+                                        onChange={e => setPagoForm(f => ({ ...f, monto: +e.target.value }))} />
                                 </div>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Referencia / Tracking Number</label>
-                                <input type="text" className="form-input" value={pagoForm.referencia ?? ''}
-                                    onChange={e => setPagoForm(f => ({ ...f, referencia: e.target.value }))} placeholder="NRO DE RECIBO, TRANSFERENCIA..." />
+                                <label className="form-label">Vía de Ingreso *</label>
+                                <select className="form-input" value={pagoForm.metodo} onChange={e => setPagoForm(f => ({ ...f, metodo: e.target.value as PagarCuotaDto['metodo'] }))}>
+                                    {Object.entries(metodoLabels).map(([k, v]) => <option key={k} value={k}>{v.toUpperCase()}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Fecha del Pago</label>
+                                <input type="date" className="form-input" value={pagoForm.fechaPago ?? today()}
+                                    onChange={e => setPagoForm(f => ({ ...f, fechaPago: e.target.value }))} />
                             </div>
                         </div>
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => setPagarCuota(null)}>Abortar</Button>
-                            <Button variant="primary" style={{ flex: 1 }} onClick={handlePagarCuota} loading={savingPago}>
-                                Efectivizar Ingreso
-                            </Button>
-                        </footer>
+                        <div className="form-group">
+                            <label className="form-label">Referencia / Tracking Number</label>
+                            <input type="text" className="form-input" value={pagoForm.referencia ?? ''}
+                                onChange={e => setPagoForm(f => ({ ...f, referencia: e.target.value }))} placeholder="NRO DE RECIBO, TRANSFERENCIA..." />
+                        </div>
                     </div>
-                </div>
-            )
-            }
+                )}
+            </Modal>
 
             {/* DELETE MODAL (BAJA) */}
-            {
-                deleteId !== null && (
-                    <div className="modal-overlay" onClick={() => setDeleteId(null)}>
-                        <div className="modal-box" style={{ maxWidth: '420px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                            <div className="p-10">
-                                <div className="w-20 h-20 bg-red-900/20 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-red-500/20 shadow-inner">
-                                    <Trash2 size={40} />
-                                </div>
-                                <h2 className="text-2xl font-black mb-2 text-white italic">Revocar Activo</h2>
-                                <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-                                    ¿Confirma la revocación total del contrato <span className="text-red-500 font-bold"># {deleteId}</span>? Esta acción es irreversible y anulará el cronograma de cobros.
-                                </p>
-                                <div className="flex gap-4">
-                                    <Button variant="secondary" style={{ flex: 1 }} onClick={() => setDeleteId(null)}>Desistir</Button>
-                                    <Button variant="danger" style={{ flex: 1 }} onClick={handleDelete}>Confirmar Revocación</Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            <ConfirmDialog
+                isOpen={deleteId !== null}
+                type="danger"
+                title="Anular financiación"
+                message={`¿Confirma la revocación total del contrato # ${deleteId ?? ''}? Esta acción es irreversible y anulará el cronograma de cobros.`}
+                confirmLabel="Confirmar Revocación"
+                cancelLabel="Desistir"
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteId(null)}
+            />
 
             <style>{`
                 .form-input-premium {

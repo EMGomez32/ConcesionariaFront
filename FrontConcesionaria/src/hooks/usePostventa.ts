@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { postventaApi } from '../api/postventa.api';
+import { postventaApi, type CreateCasoDto, type CreateItemDto } from '../api/postventa.api';
 
 export const postventaKeys = {
     all: ['postventa'] as const,
@@ -7,7 +7,7 @@ export const postventaKeys = {
     caso: (id: number) => [...postventaKeys.casos(), id] as const,
 };
 
-export const usePostventaCasos = (filters: any = {}) => {
+export const usePostventaCasos = (filters: Record<string, unknown> = {}) => {
     return useQuery({
         queryKey: [...postventaKeys.casos(), filters],
         queryFn: async () => {
@@ -31,7 +31,7 @@ export const usePostventaCaso = (id: number) => {
 export const useCreatePostventaCaso = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => postventaApi.createCaso(data),
+        mutationFn: (data: CreateCasoDto) => postventaApi.createCaso(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: postventaKeys.casos() });
         },
@@ -41,7 +41,7 @@ export const useCreatePostventaCaso = () => {
 export const useCreatePostventaItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => postventaApi.createItem(data),
+        mutationFn: (data: CreateItemDto) => postventaApi.createItem(data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: postventaKeys.caso(variables.casoId) });
         },

@@ -6,6 +6,8 @@ import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 import Badge, { type BadgeVariant } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
     ArrowLeft, Bookmark, Calendar, DollarSign,
     Car, Users, MapPin, RefreshCw, XCircle,
@@ -303,107 +305,81 @@ const ReservaDetallePage = () => {
                 </div>
             )}
 
-            {/* Cancel Modal */}
-            {showCancelModal && (
-                <div className="modal-overlay" onClick={() => setShowCancelModal(false)}>
-                    <div className="modal glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
-                        <div className="modal-header">
-                            <h3>Cancelar Reserva #{reserva.id}</h3>
-                            <button className="icon-btn" onClick={() => setShowCancelModal(false)}><XCircle size={18} /></button>
-                        </div>
-                        <p style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)' }}>
-                            ¿Confirmar la cancelación de esta reserva?<br />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                El vehículo <strong>{reserva.vehiculo?.marca} {reserva.vehiculo?.modelo}</strong> volverá a estado "Publicado".
-                            </span>
-                        </p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)' }}>
-                            <Button variant="secondary" onClick={() => setShowCancelModal(false)}>Volver</Button>
-                            <Button variant="danger" onClick={handleCancel} disabled={actionLoading}>
-                                {actionLoading ? 'Cancelando...' : 'Cancelar reserva'}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={showCancelModal}
+                title={`Cancelar reserva #${reserva.id}`}
+                message={`¿Confirmar la cancelación? El vehículo "${reserva.vehiculo?.marca} ${reserva.vehiculo?.modelo}" volverá a estado "Publicado".`}
+                confirmLabel="Cancelar reserva"
+                cancelLabel="Volver"
+                type="danger"
+                onConfirm={handleCancel}
+                onCancel={() => setShowCancelModal(false)}
+                loading={actionLoading}
+            />
 
-            {/* Convertir en Venta Modal */}
-            {showConvertirModal && (
-                <div className="modal-overlay" onClick={() => setShowConvertirModal(false)}>
-                    <div className="modal glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
-                        <div className="modal-header">
-                            <h3>Convertir Reserva #{reserva.id} en Venta</h3>
-                            <button className="icon-btn" onClick={() => setShowConvertirModal(false)}><XCircle size={18} /></button>
+            <Modal
+                isOpen={showConvertirModal}
+                onClose={() => setShowConvertirModal(false)}
+                title={`Convertir reserva #${reserva.id} en venta`}
+                maxWidth="520px"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowConvertirModal(false)}>Cancelar</Button>
+                        <Button variant="primary" onClick={handleConvertirEnVenta} loading={actionLoading}>
+                            Crear venta
+                        </Button>
+                    </>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        <div>
+                            <label className="input-label">Precio venta *</label>
+                            <input type="number" className="form-input" value={convertirForm.precioVenta || ''}
+                                onChange={e => setConvertirForm(f => ({ ...f, precioVenta: +e.target.value }))} />
                         </div>
-                        <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Precio venta *</label>
-                                    <input type="number" className="form-input" value={convertirForm.precioVenta || ''}
-                                        onChange={e => setConvertirForm(f => ({ ...f, precioVenta: +e.target.value }))} />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Moneda</label>
-                                    <select className="form-input" value={convertirForm.moneda}
-                                        onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
-                                        <option value="ARS">ARS</option>
-                                        <option value="USD">USD</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Forma de pago</label>
-                                    <select className="form-input" value={convertirForm.formaPago}
-                                        onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
-                                        {FORMA_PAGO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Fecha venta</label>
-                                    <input type="date" className="form-input" value={convertirForm.fechaVenta}
-                                        onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Observaciones</label>
-                                <textarea className="form-input" rows={3} value={convertirForm.observaciones}
-                                    onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))} />
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)' }}>
-                            <Button variant="secondary" onClick={() => setShowConvertirModal(false)}>Cancelar</Button>
-                            <Button variant="primary" onClick={handleConvertirEnVenta} disabled={actionLoading}>
-                                {actionLoading ? 'Creando...' : 'Crear venta'}
-                            </Button>
+                        <div>
+                            <label className="input-label">Moneda</label>
+                            <select className="form-input" value={convertirForm.moneda}
+                                onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+                                <option value="ARS">ARS</option>
+                                <option value="USD">USD</option>
+                            </select>
                         </div>
                     </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        <div>
+                            <label className="input-label">Forma de pago</label>
+                            <select className="form-input" value={convertirForm.formaPago}
+                                onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
+                                {FORMA_PAGO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="input-label">Fecha venta</label>
+                            <input type="date" className="form-input" value={convertirForm.fechaVenta}
+                                onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="input-label">Observaciones</label>
+                        <textarea className="form-input" rows={3} value={convertirForm.observaciones}
+                            onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))} />
+                    </div>
                 </div>
-            )}
+            </Modal>
 
-            {/* Mark Vencida Modal */}
-            {showVencidaModal && (
-                <div className="modal-overlay" onClick={() => setShowVencidaModal(false)}>
-                    <div className="modal glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
-                        <div className="modal-header">
-                            <h3>Marcar como Vencida</h3>
-                            <button className="icon-btn" onClick={() => setShowVencidaModal(false)}><XCircle size={18} /></button>
-                        </div>
-                        <p style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)' }}>
-                            ¿Marcar la reserva <strong>#{reserva.id}</strong> como vencida?<br />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                El vehículo volverá a estado "Publicado".
-                            </span>
-                        </p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)' }}>
-                            <Button variant="secondary" onClick={() => setShowVencidaModal(false)}>Volver</Button>
-                            <Button variant="danger" onClick={handleMarkVencida} disabled={actionLoading}>
-                                {actionLoading ? 'Guardando...' : 'Marcar vencida'}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={showVencidaModal}
+                title="Marcar como vencida"
+                message={`¿Marcar la reserva #${reserva.id} como vencida? El vehículo volverá a estado "Publicado".`}
+                confirmLabel="Marcar vencida"
+                cancelLabel="Volver"
+                type="warning"
+                onConfirm={handleMarkVencida}
+                onCancel={() => setShowVencidaModal(false)}
+                loading={actionLoading}
+            />
 
             <style>{`
                 @keyframes spin { to { transform: rotate(360deg); } }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { CreateConcesionariaDto, Concesionaria } from '../../types/concesionaria.types';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
@@ -12,25 +12,15 @@ interface ConcesionariaFormProps {
 }
 
 const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initialData, onCancel, loading }) => {
-    const [formData, setFormData] = useState<CreateConcesionariaDto>({
-        nombre: '',
-        cuit: '',
-        email: '',
-        telefono: '',
-        direccion: '',
-    });
-
-    useEffect(() => {
-        if (initialData) {
-            setFormData({
-                nombre: initialData.nombre || '',
-                cuit: initialData.cuit || '',
-                email: initialData.email || '',
-                telefono: initialData.telefono || '',
-                direccion: initialData.direccion || '',
-            });
-        }
-    }, [initialData]);
+    // Inicialización lazy: el state se deriva de initialData una sola vez al montar.
+    // El caller monta/remonta este form con key={id || 'new'} cuando cambia el target.
+    const [formData, setFormData] = useState<CreateConcesionariaDto>(() => ({
+        nombre: initialData?.nombre || '',
+        cuit: initialData?.cuit || '',
+        email: initialData?.email || '',
+        telefono: initialData?.telefono || '',
+        direccion: initialData?.direccion || '',
+    }));
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -50,7 +40,7 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                 value={formData.nombre}
                 onChange={handleChange}
                 placeholder="ej. Automotores Sur"
-                icon={<Building2 size={18} />}
+                icon={<Building2 size={16} />}
                 required
             />
             <Input
@@ -59,7 +49,7 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                 value={formData.cuit}
                 onChange={handleChange}
                 placeholder="30-12345678-9"
-                icon={<Hash size={18} />}
+                icon={<Hash size={16} />}
             />
             <Input
                 label="Email de Contacto"
@@ -68,7 +58,7 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="contacto@concesionaria.com"
-                icon={<Mail size={18} />}
+                icon={<Mail size={16} />}
             />
             <Input
                 label="Teléfono"
@@ -76,7 +66,7 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                 value={formData.telefono}
                 onChange={handleChange}
                 placeholder="+54 11 1234-5678"
-                icon={<Phone size={18} />}
+                icon={<Phone size={16} />}
             />
             <div className="full-width">
                 <Input
@@ -85,15 +75,15 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                     value={formData.direccion}
                     onChange={handleChange}
                     placeholder="Av. Libertador 1234, CABA"
-                    icon={<MapPin size={18} />}
+                    icon={<MapPin size={16} />}
                 />
             </div>
 
             <div className="form-actions full-width">
-                <Button type="button" variant="secondary" onClick={onCancel} style={{ paddingLeft: '2rem', paddingRight: '2rem' }}>
+                <Button type="button" variant="secondary" onClick={onCancel}>
                     Cancelar
                 </Button>
-                <Button type="submit" variant="primary" loading={loading} style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}>
+                <Button type="submit" variant="primary" loading={loading}>
                     {initialData ? 'Guardar Cambios' : 'Crear Concesionaria'}
                 </Button>
             </div>
@@ -102,7 +92,7 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                 .form-grid {
                     display: grid;
                     grid-template-columns: repeat(2, 1fr);
-                    gap: 1.5rem;
+                    gap: var(--space-4);
                 }
                 .full-width {
                     grid-column: span 2;
@@ -110,15 +100,10 @@ const ConcesionariaForm: React.FC<ConcesionariaFormProps> = ({ onSubmit, initial
                 .form-actions {
                     display: flex;
                     justify-content: flex-end;
-                    gap: 1rem;
-                    margin-top: 2rem;
-                    padding-top: 2rem;
+                    gap: var(--space-3);
+                    margin-top: var(--space-4);
+                    padding-top: var(--space-5);
                     border-top: 1px solid var(--border);
-                }
-                
-                /* Personalización de inputs si es necesario */
-                .form-grid :global(.input-wrapper) {
-                    margin-bottom: 0;
                 }
             `}</style>
         </form>

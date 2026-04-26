@@ -45,4 +45,4 @@ export interface CreateUsuarioDto {
     roleIds: number[];
 }
 
-export interface UpdateUsuarioDto extends Partial<CreateUsuarioDto> {}
+export type UpdateUsuarioDto = Partial<CreateUsuarioDto>;

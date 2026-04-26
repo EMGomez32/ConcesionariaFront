@@ -67,7 +67,7 @@ const GastosPage: React.FC = () => {
         descripcion: debouncedSearch || undefined
     });
 
-    const gastos = payload?.results || [];
+    const gastos = useMemo(() => payload?.results || [], [payload?.results]);
     const totalPages = payload?.totalPages || 1;
 
     // Mutations

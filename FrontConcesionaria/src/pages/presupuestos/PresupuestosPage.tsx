@@ -6,13 +6,72 @@ import { usuariosApi } from '../../api/usuarios.api';
 import { sucursalesApi } from '../../api/sucursales.api';
 import { vehiculosApi } from '../../api/vehiculos.api';
 import client from '../../api/client';
-import type { EstadoPresupuesto } from '../../types/presupuesto.types';
+import type { EstadoPresupuesto, Presupuesto } from '../../types/presupuesto.types';
 import type { FormaPagoVenta } from '../../types/venta.types';
+
+/* ── tipos locales ── */
+interface PresupuestoItem {
+    id: number;
+    vehiculoId?: number;
+    vehiculo?: { marca: string; modelo: string; dominio?: string; vin?: string };
+    precioLista: number | string;
+    descuento?: number | string;
+    precioFinal: number | string;
+}
+
+interface PresupuestoExtra {
+    id?: number;
+    descripcion?: string;
+    monto: number | string;
+}
+
+interface PresupuestoCanje {
+    descripcion?: string;
+    anio?: number | string;
+    km?: number | string;
+    dominio?: string;
+    valorTomado: number | string;
+    observaciones?: string;
+}
+
+interface PresupuestoRow extends Omit<Presupuesto, 'items'> {
+    items?: PresupuestoItem[];
+    extras?: PresupuestoExtra[];
+    canje?: PresupuestoCanje | null;
+    sucursal?: { nombre: string };
+    observaciones?: string;
+}
+
+interface ClienteRef {
+    id: number;
+    nombre: string;
+}
+
+interface SucursalRef {
+    id: number;
+    nombre: string;
+}
+
+interface VehiculoRef {
+    id: number;
+    marca: string;
+    modelo: string;
+    version?: string;
+    dominio?: string;
+    vin?: string;
+}
+
+interface VendedorRef {
+    id: number;
+    nombre: string;
+}
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useUIStore } from '../../store/uiStore';
 import {
-    Plus, Search, Eye, Pencil, Trash2, X, ChevronLeft, ChevronRight,
+    Plus, Search, Eye, Pencil, Trash2, ChevronLeft, ChevronRight,
     SendHorizonal, CheckCircle, XCircle, Clock, FileText, Car,
     ArrowRightLeft, DollarSign, Calendar, User,
     MapPin, Hash, RefreshCw, Briefcase, Calculator, ArrowRight
@@ -108,8 +167,7 @@ const PresupuestosPage = () => {
     };
 
     /* ── data ── */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [presupuestos, setPresupuestos] = useState<any[]>([]);
+    const [presupuestos, setPresupuestos] = useState<PresupuestoRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -119,20 +177,15 @@ const PresupuestosPage = () => {
     const [filterEstado, setFilterEstado] = useState('');
 
     /* ── catalogs ── */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [clientes, setClientes] = useState<any[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [vendedores, setVendedores] = useState<any[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [sucursales, setSucursales] = useState<any[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [vehiculos, setVehiculos] = useState<any[]>([]);
+    const [clientes, setClientes] = useState<ClienteRef[]>([]);
+    const [vendedores, setVendedores] = useState<VendedorRef[]>([]);
+    const [sucursales, setSucursales] = useState<SucursalRef[]>([]);
+    const [vehiculos, setVehiculos] = useState<VehiculoRef[]>([]);
 
     /* ── modals ── */
     const [createOpen, setCreateOpen] = useState(false);
     const [detailId, setDetailId] = useState<number | null>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [detail, setDetail] = useState<any | null>(null);
+    const [detail, setDetail] = useState<PresupuestoRow | null>(null);
     const [, setDetailLoading] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState({ estado: '', observaciones: '' });
@@ -150,10 +203,10 @@ const PresupuestosPage = () => {
             sucursalesApi.getAll({}, { limit: 100 }),
             vehiculosApi.getAll({ estado: 'publicado' }, { limit: 1000 }),
         ]).then(([c, u, s, v]) => {
-            setClientes(c.results ?? []);
-            setVendedores((u as { results?: unknown[] }).results ?? []);
-            setSucursales((s as { results?: unknown[] }).results ?? []);
-            setVehiculos(v.results ?? []);
+            setClientes((c.results ?? []) as ClienteRef[]);
+            setVendedores(((u as { results?: VendedorRef[] }).results ?? []));
+            setSucursales(((s as { results?: SucursalRef[] }).results ?? []));
+            setVehiculos((v.results ?? []) as VehiculoRef[]);
         });
     }, []);
 
@@ -164,7 +217,7 @@ const PresupuestosPage = () => {
             const params: Record<string, unknown> = { page: p, limit: 15 };
             if (filterEstado) params.estado = filterEstado;
             const res = await presupuestosApi.getAll(params);
-            setPresupuestos(res?.results ?? []);
+            setPresupuestos((res?.results ?? []) as PresupuestoRow[]);
             setTotalPages(res?.totalPages ?? 1);
             setPage(p);
         } catch {
@@ -181,7 +234,8 @@ const PresupuestosPage = () => {
         if (detailId === null) { setDetail(null); return; }
         setDetailLoading(true);
         presupuestosApi.getById(detailId)
-            .then(r => setDetail((r as { data?: { data?: unknown } })?.data?.data ?? null))
+            .then(r => setDetail(((r as { data?: { data?: PresupuestoRow } })?.data?.data ?? null))
+            )
             .catch(() => addToast('Fallo en la recuperación del expediente comercial', 'error'))
             .finally(() => setDetailLoading(false));
     }, [detailId, addToast]);
@@ -251,8 +305,7 @@ const PresupuestosPage = () => {
     };
 
     /* ── edit ── */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const openEdit = (p: any) => {
+    const openEdit = (p: PresupuestoRow) => {
         setEditId(Number(p.id));
         setEditForm({ estado: String(p.estado || ''), observaciones: String(p.observaciones || '') });
     };
@@ -309,12 +362,9 @@ const PresupuestosPage = () => {
         setForm(f => ({ ...f, items: f.items.map((it, idx) => idx === i ? { ...it, [k]: v } : it) }));
 
     /* ── total calc ── */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const calcTotal = (pres: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items = (pres.items ?? []).reduce((s: number, i: any) => s + Number(i.precioFinal ?? 0), 0);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const extras = (pres.extras ?? []).reduce((s: number, e: any) => s + Number(e.monto ?? 0), 0);
+    const calcTotal = (pres: PresupuestoRow) => {
+        const items = (pres.items ?? []).reduce((s: number, i: PresupuestoItem) => s + Number(i.precioFinal ?? 0), 0);
+        const extras = (pres.extras ?? []).reduce((s: number, e: PresupuestoExtra) => s + Number(e.monto ?? 0), 0);
         const canje = pres.canje ? Number(pres.canje.valorTomado ?? 0) : 0;
         return items + extras - canje;
     };
@@ -543,362 +593,346 @@ const PresupuestosPage = () => {
             )}
 
             {/* CREATE MODAL */}
-            {createOpen && (
-                <div className="modal-overlay" onClick={() => setCreateOpen(false)}>
-                    <div className="modal-box" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">Instrumentación de Cotización</h2>
-                            <p className="text-sm text-muted">Defina las condiciones comerciales y activos involucrados en la propuesta.</p>
-                        </header>
-                        <div className="modal-body space-y-8 max-h-[70vh] overflow-y-auto pr-2">
-                            {/* Primary Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="form-group flex flex-col">
-                                    <label className="form-label">Nro. de Control *</label>
-                                    <div className="relative">
-                                        <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                                        <input className="form-input pl-10 font-bold" value={form.nroPresupuesto} onChange={e => setForm(f => ({ ...f, nroPresupuesto: e.target.value }))} />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Divisa de Negociación *</label>
-                                    <select className="form-input font-bold" value={form.moneda} onChange={e => setForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
-                                        <option value="ARS">PESO ARGENTINO (ARS)</option>
-                                        <option value="USD">DÓLAR ESTADOUNIDENSE (USD)</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Sucursal Radicación *</label>
-                                    <select className="form-input" value={form.sucursalId} onChange={e => setForm(f => ({ ...f, sucursalId: e.target.value }))}>
-                                        <option value="">SELECCIONAR PUNTO DE VENTA...</option>
-                                        {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Cliente Potencial *</label>
-                                    <select className="form-input" value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}>
-                                        <option value="">SELECCIONAR PROSPECTO...</option>
-                                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Vendedor Designado *</label>
-                                    <select className="form-input" value={form.vendedorId} onChange={e => setForm(f => ({ ...f, vendedorId: e.target.value }))}>
-                                        <option value="">ASIGNAR OFICIAL COMERCIAL...</option>
-                                        {vendedores.map(u => <option key={u.id} value={u.id}>{u.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Fecha Límite Validez</label>
-                                    <input type="date" className="form-input" value={form.validoHasta} onChange={e => setForm(f => ({ ...f, validoHasta: e.target.value }))} />
-                                </div>
-                            </div>
-
-                            {/* Items Section */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                    <h3 className="text-xs font-black uppercase text-accent tracking-widest flex items-center gap-2">
-                                        <Car size={14} /> Unidades Cotizadas
-                                    </h3>
-                                    <Button variant="secondary" size="sm" onClick={addItem}>
-                                        <Plus size={14} className="mr-1" /> Añadir Unidad
-                                    </Button>
-                                </div>
-                                {form.items.map((item, i) => (
-                                    <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-slate-900/40 p-4 rounded-2xl border border-white/5 group relative transition-all hover:bg-slate-900/60">
-                                        <div className="md:col-span-5">
-                                            <label className="form-label-xs">Vehículo / Modelo</label>
-                                            <select className="form-input py-2" value={item.vehiculoId} onChange={e => updItem(i, 'vehiculoId', e.target.value)}>
-                                                <option value="">SELECCIONE UNIDAD EN STOCK...</option>
-                                                {vehiculos.map(v => <option key={v.id} value={v.id}>{v.marca} {v.modelo} — {v.dominio ?? v.vin ?? `#${v.id}`}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="form-label-xs">P. Lista</label>
-                                            <input type="number" className="form-input py-2" value={item.precioLista} onChange={e => updItem(i, 'precioLista', e.target.value)} />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="form-label-xs">Desc.</label>
-                                            <input type="number" className="form-input py-2" value={item.descuento} onChange={e => updItem(i, 'descuento', e.target.value)} />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="form-label-xs">Final *</label>
-                                            <input type="number" className="form-input py-2 font-bold text-accent" value={item.precioFinal} onChange={e => updItem(i, 'precioFinal', e.target.value)} />
-                                        </div>
-                                        <div className="md:col-span-1">
-                                            <button className="w-full h-[38px] flex items-center justify-center text-red-500/50 hover:text-red-500 transition-all rounded-lg"
-                                                onClick={() => removeItem(i)} disabled={form.items.length === 1}>
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Canje Section */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                    <h3 className="text-xs font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
-                                        <ArrowRightLeft size={14} /> Toma de Usado (Canje)
-                                    </h3>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <span className="text-[10px] font-bold text-muted uppercase">{form.conCanje ? 'Incluido' : 'Sin Canje'}</span>
-                                        <div className={`w-10 h-5 rounded-full transition-all relative ${form.conCanje ? 'bg-indigo-600' : 'bg-slate-700'}`}
-                                            onClick={() => setForm(f => ({ ...f, conCanje: !f.conCanje }))}>
-                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${form.conCanje ? 'right-1' : 'left-1'}`} />
-                                        </div>
-                                    </label>
-                                </div>
-                                {form.conCanje && (
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 bg-indigo-500/5 p-6 rounded-3xl border border-indigo-500/10">
-                                        <div className="md:col-span-2">
-                                            <label className="form-label">Descripción / Marca / Modelo</label>
-                                            <input className="form-input" value={form.canje.descripcion} onChange={e => setForm(f => ({ ...f, canje: { ...f.canje, descripcion: e.target.value } }))} />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Dominio</label>
-                                            <input className="form-input font-mono" value={form.canje.dominio} onChange={e => setForm(f => ({ ...f, canje: { ...f.canje, dominio: e.target.value } }))} />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Valor de Toma *</label>
-                                            <div className="relative">
-                                                <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" />
-                                                <input type="number" className="form-input pl-10 font-bold" value={form.canje.valorTomado} onChange={e => setForm(f => ({ ...f, canje: { ...f.canje, valorTomado: e.target.value } }))} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Summary Footer */}
-                            <div className="sticky bottom-0 bg-slate-900 border-t border-white/10 p-6 -mx-6 -mb-8 rounded-b-3xl flex justify-between items-center shadow-2xl">
-                                <div>
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Impacto Final Neto</p>
-                                    <p className="text-3xl font-black text-white">${currentTotal().toLocaleString('es-AR')} <span className="text-sm font-normal text-slate-500 italic">({form.moneda})</span></p>
-                                </div>
-                                <div className="flex gap-4">
-                                    <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                                    <Button variant="primary" className="px-10" onClick={handleCreate} loading={saving}>Instrumentar Propuesta</Button>
-                                </div>
-                            </div>
+            <Modal
+                isOpen={createOpen}
+                onClose={() => setCreateOpen(false)}
+                title="Instrumentación de Cotización"
+                subtitle="Defina las condiciones comerciales y activos involucrados en la propuesta."
+                maxWidth="900px"
+                footer={(
+                    <div className="flex justify-between items-center w-full">
+                        <div>
+                            <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Impacto Final Neto</p>
+                            <p className="text-3xl font-black text-white">${currentTotal().toLocaleString('es-AR')} <span className="text-sm font-normal text-slate-500 italic">({form.moneda})</span></p>
+                        </div>
+                        <div className="flex gap-4">
+                            <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                            <Button variant="primary" className="px-10" onClick={handleCreate} loading={saving}>Instrumentar Propuesta</Button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            >
+                <div className="space-y-8 max-h-[70vh] overflow-y-auto pr-2">
+                    {/* Primary Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="form-group flex flex-col">
+                            <label className="form-label">Nro. de Control *</label>
+                            <div className="relative">
+                                <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
+                                <input className="form-input pl-10 font-bold" value={form.nroPresupuesto} onChange={e => setForm(f => ({ ...f, nroPresupuesto: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Divisa de Negociación *</label>
+                            <select className="form-input font-bold" value={form.moneda} onChange={e => setForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+                                <option value="ARS">PESO ARGENTINO (ARS)</option>
+                                <option value="USD">DÓLAR ESTADOUNIDENSE (USD)</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Sucursal Radicación *</label>
+                            <select className="form-input" value={form.sucursalId} onChange={e => setForm(f => ({ ...f, sucursalId: e.target.value }))}>
+                                <option value="">SELECCIONAR PUNTO DE VENTA...</option>
+                                {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Cliente Potencial *</label>
+                            <select className="form-input" value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}>
+                                <option value="">SELECCIONAR PROSPECTO...</option>
+                                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Vendedor Designado *</label>
+                            <select className="form-input" value={form.vendedorId} onChange={e => setForm(f => ({ ...f, vendedorId: e.target.value }))}>
+                                <option value="">ASIGNAR OFICIAL COMERCIAL...</option>
+                                {vendedores.map(u => <option key={u.id} value={u.id}>{u.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Fecha Límite Validez</label>
+                            <input type="date" className="form-input" value={form.validoHasta} onChange={e => setForm(f => ({ ...f, validoHasta: e.target.value }))} />
+                        </div>
+                    </div>
 
-            {/* DETAIL MODAL */}
-            {detailId !== null && (
-                <div className="modal-overlay" onClick={() => setDetailId(null)}>
-                    <div className="modal-box" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
-                        {!detail ? (
-                            <div className="p-24 text-center"><RefreshCw className="animate-spin text-accent mx-auto mb-4" size={48} /><p className="text-xs font-black text-muted uppercase tracking-[0.3em]">Consolidando expediente comercial...</p></div>
-                        ) : (
-                            <div className="space-y-8">
-                                <header className="flex justify-between items-start">
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-16 h-16 rounded-3xl bg-slate-800 flex items-center justify-center text-accent ring-1 ring-white/10">
-                                            <FileText size={32} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-3 mb-1">
-                                                <h2 className="text-3xl font-black text-white">{detail.nroPresupuesto}</h2>
-                                                <Badge variant={STATUS[detail.estado as EstadoPresupuesto]?.variant ?? 'default'}>
-                                                    {STATUS[detail.estado as EstadoPresupuesto]?.label.toUpperCase()}
-                                                </Badge>
-                                            </div>
-                                            <p className="text-slate-400 font-bold flex items-center gap-2 uppercase text-xs">
-                                                <MapPin size={14} /> SUCURSAL: {detail.sucursal?.nombre ?? 'NO ESPECIFICADA'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button className="p-3 bg-slate-800 rounded-2x hover:bg-slate-700 transition-all text-slate-400" onClick={() => setDetailId(null)}>
-                                        <X size={24} />
+                    {/* Items Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <h3 className="text-xs font-black uppercase text-accent tracking-widest flex items-center gap-2">
+                                <Car size={14} /> Unidades Cotizadas
+                            </h3>
+                            <Button variant="secondary" size="sm" onClick={addItem}>
+                                <Plus size={14} className="mr-1" /> Añadir Unidad
+                            </Button>
+                        </div>
+                        {form.items.map((item, i) => (
+                            <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-slate-900/40 p-4 rounded-2xl border border-white/5 group relative transition-all hover:bg-slate-900/60">
+                                <div className="md:col-span-5">
+                                    <label className="form-label-xs">Vehículo / Modelo</label>
+                                    <select className="form-input py-2" value={item.vehiculoId} onChange={e => updItem(i, 'vehiculoId', e.target.value)}>
+                                        <option value="">SELECCIONE UNIDAD EN STOCK...</option>
+                                        {vehiculos.map(v => <option key={v.id} value={v.id}>{v.marca} {v.modelo} — {v.dominio ?? v.vin ?? `#${v.id}`}</option>)}
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="form-label-xs">P. Lista</label>
+                                    <input type="number" className="form-input py-2" value={item.precioLista} onChange={e => updItem(i, 'precioLista', e.target.value)} />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="form-label-xs">Desc.</label>
+                                    <input type="number" className="form-input py-2" value={item.descuento} onChange={e => updItem(i, 'descuento', e.target.value)} />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="form-label-xs">Final *</label>
+                                    <input type="number" className="form-input py-2 font-bold text-accent" value={item.precioFinal} onChange={e => updItem(i, 'precioFinal', e.target.value)} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <button className="w-full h-[38px] flex items-center justify-center text-red-500/50 hover:text-red-500 transition-all rounded-lg"
+                                        onClick={() => removeItem(i)} disabled={form.items.length === 1}>
+                                        <Trash2 size={18} />
                                     </button>
-                                </header>
-
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                    <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                        <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Fecha Emisión</span>
-                                        <p className="text-lg font-bold text-white">{fmt(detail.fechaCreacion)}</p>
-                                    </div>
-                                    <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                        <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Validez Hasta</span>
-                                        <p className="text-lg font-bold text-white">{fmt(detail.validoHasta)}</p>
-                                    </div>
-                                    <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                        <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Interesado</span>
-                                        <p className="text-lg font-bold text-white truncate">{detail.cliente?.nombre ?? '-'}</p>
-                                    </div>
-                                    <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
-                                        <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Oficial Responsable</span>
-                                        <p className="text-lg font-bold text-white truncate">{detail.vendedor?.nombre ?? '-'}</p>
-                                    </div>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
 
-                                <div className="space-y-6">
-                                    <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-2">
-                                        <Car size={16} className="text-accent" /> Matriz de Unidades Cotizadas
-                                    </h3>
-                                    <div className="table-container border-white/5 overflow-hidden">
-                                        <table className="data-table">
-                                            <thead className="bg-slate-900/60">
-                                                <tr>
-                                                    <th>Activo / Unidad</th>
-                                                    <th style={{ textAlign: 'right' }}>Precio Lista</th>
-                                                    <th style={{ textAlign: 'right' }}>Descuento Aplicado</th>
-                                                    <th style={{ textAlign: 'right' }}>Neto Final</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                {detail.items?.map((it: any) => (
-                                                    <tr key={it.id}>
-                                                        <td className="font-bold text-white uppercase text-xs">{it.vehiculo ? `${it.vehiculo.marca} ${it.vehiculo.modelo} [${it.vehiculo.dominio || 'S/D'}]` : `#${it.vehiculoId}`}</td>
-                                                        <td style={{ textAlign: 'right' }} className="text-slate-400 font-mono italic">{currencyFmt(it.precioLista, String(detail.moneda))}</td>
-                                                        <td style={{ textAlign: 'right' }} className="text-red-400 font-mono font-bold">-{currencyFmt(it.descuento ?? 0, String(detail.moneda))}</td>
-                                                        <td style={{ textAlign: 'right' }} className="font-black text-white text-lg">{currencyFmt(it.precioFinal, String(detail.moneda))}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                    {/* Canje Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <h3 className="text-xs font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                <ArrowRightLeft size={14} /> Toma de Usado (Canje)
+                            </h3>
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <span className="text-[10px] font-bold text-muted uppercase">{form.conCanje ? 'Incluido' : 'Sin Canje'}</span>
+                                <div className={`w-10 h-5 rounded-full transition-all relative ${form.conCanje ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                                    onClick={() => setForm(f => ({ ...f, conCanje: !f.conCanje }))}>
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${form.conCanje ? 'right-1' : 'left-1'}`} />
                                 </div>
-
-                                {detail.canje && (
-                                    <div className="p-8 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl">
-                                        <h3 className="text-xs font-black uppercase text-indigo-400 tracking-widest mb-6 flex items-center gap-2">
-                                            <ArrowRightLeft size={14} /> Gestión de Toma de Usado
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                                            <div className="md:col-span-2">
-                                                <span className="text-[10px] font-black text-muted block mb-1 uppercase">Descripción del Activo</span>
-                                                <p className="font-bold text-white uppercase">{detail.canje.descripcion}</p>
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-black text-muted block mb-1 uppercase">Dominio</span>
-                                                <p className="font-mono text-white text-lg tracking-widest">{detail.canje.dominio || 'S/D'}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-[10px] font-black text-indigo-400 block mb-1 uppercase">Acreditación Canje</span>
-                                                <p className="text-2xl font-black text-white">-{currencyFmt(detail.canje.valorTomado, detail.moneda)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="p-8 bg-slate-900 border border-white/5 rounded-3xl flex justify-between items-center shadow-glow-sm">
-                                    <div>
-                                        <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Impacto Final de la Operación</p>
-                                        <p className="text-4xl font-black text-accent">{currencyFmt(calcTotal(detail), detail.moneda)}</p>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <Button variant="secondary" onClick={() => setDetailId(null)}>Cerrar Expediente</Button>
-                                        <Button variant="primary" className="px-8 shadow-glow" onClick={() => { setDetailId(null); openEdit(detail); }}>
-                                            <Pencil size={16} className="mr-2" /> Alterar Parámetros
-                                        </Button>
+                            </label>
+                        </div>
+                        {form.conCanje && (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 bg-indigo-500/5 p-6 rounded-3xl border border-indigo-500/10">
+                                <div className="md:col-span-2">
+                                    <label className="form-label">Descripción / Marca / Modelo</label>
+                                    <input className="form-input" value={form.canje.descripcion} onChange={e => setForm(f => ({ ...f, canje: { ...f.canje, descripcion: e.target.value } }))} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Dominio</label>
+                                    <input className="form-input font-mono" value={form.canje.dominio} onChange={e => setForm(f => ({ ...f, canje: { ...f.canje, dominio: e.target.value } }))} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Valor de Toma *</label>
+                                    <div className="relative">
+                                        <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" />
+                                        <input type="number" className="form-input pl-10 font-bold" value={form.canje.valorTomado} onChange={e => setForm(f => ({ ...f, canje: { ...f.canje, valorTomado: e.target.value } }))} />
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
-            )}
+            </Modal>
+
+            {/* DETAIL MODAL */}
+            <Modal
+                isOpen={detailId !== null}
+                onClose={() => setDetailId(null)}
+                title={detail?.nroPresupuesto ?? 'Expediente Comercial'}
+                subtitle={detail ? `SUCURSAL: ${detail.sucursal?.nombre ?? 'NO ESPECIFICADA'}` : undefined}
+                maxWidth="900px"
+                footer={detail ? (
+                    <div className="flex justify-between items-center w-full">
+                        <div>
+                            <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Impacto Final de la Operación</p>
+                            <p className="text-2xl font-black text-accent">{currencyFmt(calcTotal(detail), detail.moneda)}</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <Button variant="secondary" onClick={() => setDetailId(null)}>Cerrar Expediente</Button>
+                            <Button variant="primary" className="px-8 shadow-glow" onClick={() => { setDetailId(null); openEdit(detail); }}>
+                                <Pencil size={16} className="mr-2" /> Alterar Parámetros
+                            </Button>
+                        </div>
+                    </div>
+                ) : undefined}
+            >
+                {!detail ? (
+                    <div className="p-24 text-center"><RefreshCw className="animate-spin text-accent mx-auto mb-4" size={48} /><p className="text-xs font-black text-muted uppercase tracking-[0.3em]">Consolidando expediente comercial...</p></div>
+                ) : (
+                    <div className="space-y-8">
+                        <div className="flex items-center gap-6">
+                            <div className="w-16 h-16 rounded-3xl bg-slate-800 flex items-center justify-center text-accent ring-1 ring-white/10">
+                                <FileText size={32} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <Badge variant={STATUS[detail.estado as EstadoPresupuesto]?.variant ?? 'default'}>
+                                        {STATUS[detail.estado as EstadoPresupuesto]?.label.toUpperCase()}
+                                    </Badge>
+                                </div>
+                                <p className="text-slate-400 font-bold flex items-center gap-2 uppercase text-xs">
+                                    <MapPin size={14} /> SUCURSAL: {detail.sucursal?.nombre ?? 'NO ESPECIFICADA'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Fecha Emisión</span>
+                                <p className="text-lg font-bold text-white">{fmt(detail.fechaCreacion)}</p>
+                            </div>
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Validez Hasta</span>
+                                <p className="text-lg font-bold text-white">{fmt(detail.validoHasta)}</p>
+                            </div>
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Interesado</span>
+                                <p className="text-lg font-bold text-white truncate">{detail.cliente?.nombre ?? '-'}</p>
+                            </div>
+                            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
+                                <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-1">Oficial Responsable</span>
+                                <p className="text-lg font-bold text-white truncate">{detail.vendedor?.nombre ?? '-'}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-2">
+                                <Car size={16} className="text-accent" /> Matriz de Unidades Cotizadas
+                            </h3>
+                            <div className="table-container border-white/5 overflow-hidden">
+                                <table className="data-table">
+                                    <thead className="bg-slate-900/60">
+                                        <tr>
+                                            <th>Activo / Unidad</th>
+                                            <th style={{ textAlign: 'right' }}>Precio Lista</th>
+                                            <th style={{ textAlign: 'right' }}>Descuento Aplicado</th>
+                                            <th style={{ textAlign: 'right' }}>Neto Final</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {detail.items?.map((it: PresupuestoItem) => (
+                                            <tr key={it.id}>
+                                                <td className="font-bold text-white uppercase text-xs">{it.vehiculo ? `${it.vehiculo.marca} ${it.vehiculo.modelo} [${it.vehiculo.dominio || 'S/D'}]` : `#${it.vehiculoId}`}</td>
+                                                <td style={{ textAlign: 'right' }} className="text-slate-400 font-mono italic">{currencyFmt(it.precioLista, String(detail.moneda))}</td>
+                                                <td style={{ textAlign: 'right' }} className="text-red-400 font-mono font-bold">-{currencyFmt(it.descuento ?? 0, String(detail.moneda))}</td>
+                                                <td style={{ textAlign: 'right' }} className="font-black text-white text-lg">{currencyFmt(it.precioFinal, String(detail.moneda))}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {detail.canje && (
+                            <div className="p-8 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl">
+                                <h3 className="text-xs font-black uppercase text-indigo-400 tracking-widest mb-6 flex items-center gap-2">
+                                    <ArrowRightLeft size={14} /> Gestión de Toma de Usado
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                                    <div className="md:col-span-2">
+                                        <span className="text-[10px] font-black text-muted block mb-1 uppercase">Descripción del Activo</span>
+                                        <p className="font-bold text-white uppercase">{detail.canje.descripcion}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-black text-muted block mb-1 uppercase">Dominio</span>
+                                        <p className="font-mono text-white text-lg tracking-widest">{detail.canje.dominio || 'S/D'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-[10px] font-black text-indigo-400 block mb-1 uppercase">Acreditación Canje</span>
+                                        <p className="text-2xl font-black text-white">-{currencyFmt(detail.canje.valorTomado, detail.moneda)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Modal>
 
             {/* EDIT MODAL */}
-            {editId !== null && (
-                <div className="modal-overlay" onClick={() => setEditId(null)}>
-                    <div className="modal-box" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black italic">Gestión de Auditoría</h2>
-                            <p className="text-sm text-muted">Ajuste el estado legal y administrativo de la cotización.</p>
-                        </header>
-                        <div className="modal-body space-y-8">
-                            <div className="form-group">
-                                <label className="form-label">Estado del Expediente</label>
-                                <select className="form-input text-lg font-bold" value={editForm.estado} onChange={e => setEditForm(f => ({ ...f, estado: e.target.value }))}>
-                                    {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label.toUpperCase()}</option>)}
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Observaciones de Auditoría</label>
-                                <textarea className="form-input" rows={4} value={editForm.observaciones} onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))} style={{ resize: 'none' }} placeholder="JUSTIFICACIÓN DE CAMBIO DE ESTADO O NOTAS PARA VENDEDORES..." />
-                            </div>
-                        </div>
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => setEditId(null)}>Desistir</Button>
-                            <Button variant="primary" className="flex-1" onClick={handleEdit} loading={saving}>Acreditar Cambios</Button>
-                        </footer>
+            <Modal
+                isOpen={editId !== null}
+                onClose={() => setEditId(null)}
+                title="Gestión de Auditoría"
+                subtitle="Ajuste el estado legal y administrativo de la cotización."
+                maxWidth="500px"
+                footer={(
+                    <>
+                        <Button variant="secondary" onClick={() => setEditId(null)}>Desistir</Button>
+                        <Button variant="primary" className="flex-1" onClick={handleEdit} loading={saving}>Acreditar Cambios</Button>
+                    </>
+                )}
+            >
+                <div className="space-y-8">
+                    <div className="form-group">
+                        <label className="form-label">Estado del Expediente</label>
+                        <select className="form-input text-lg font-bold" value={editForm.estado} onChange={e => setEditForm(f => ({ ...f, estado: e.target.value }))}>
+                            {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label.toUpperCase()}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Observaciones de Auditoría</label>
+                        <textarea className="form-input" rows={4} value={editForm.observaciones} onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))} style={{ resize: 'none' }} placeholder="JUSTIFICACIÓN DE CAMBIO DE ESTADO O NOTAS PARA VENDEDORES..." />
                     </div>
                 </div>
-            )}
+            </Modal>
 
             {/* CONVERTIR EN VENTA MODAL */}
-            {convertirId !== null && (
-                <div className="modal-overlay" onClick={() => setConvertirId(null)}>
-                    <div className="modal-box" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">Convertir en Venta</h2>
-                            <p className="text-sm text-muted">Definí los datos de cierre. El resto los toma del presupuesto.</p>
-                        </header>
-                        <div className="modal-body space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="form-group">
-                                    <label className="form-label">Forma de pago</label>
-                                    <select className="form-input" value={convertirForm.formaPago}
-                                        onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
-                                        {FORMA_PAGO_OPTIONS_CONV.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Moneda</label>
-                                    <select className="form-input" value={convertirForm.moneda}
-                                        onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
-                                        <option value="ARS">ARS</option>
-                                        <option value="USD">USD</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Fecha venta</label>
-                                <input type="date" className="form-input" value={convertirForm.fechaVenta}
-                                    onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Observaciones</label>
-                                <textarea className="form-input" rows={3} value={convertirForm.observaciones}
-                                    onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))} />
-                            </div>
+            <Modal
+                isOpen={convertirId !== null}
+                onClose={() => setConvertirId(null)}
+                title="Convertir en Venta"
+                subtitle="Definí los datos de cierre. El resto los toma del presupuesto."
+                maxWidth="520px"
+                footer={(
+                    <>
+                        <Button variant="secondary" onClick={() => setConvertirId(null)}>Cancelar</Button>
+                        <Button variant="primary" className="flex-1" onClick={handleConvertirEnVenta} loading={convertirSaving}>
+                            <ArrowRight size={16} className="mr-2" /> Crear venta
+                        </Button>
+                    </>
+                )}
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group">
+                            <label className="form-label">Forma de pago</label>
+                            <select className="form-input" value={convertirForm.formaPago}
+                                onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
+                                {FORMA_PAGO_OPTIONS_CONV.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
                         </div>
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => setConvertirId(null)}>Cancelar</Button>
-                            <Button variant="primary" className="flex-1" onClick={handleConvertirEnVenta} loading={convertirSaving}>
-                                <ArrowRight size={16} className="mr-2" /> Crear venta
-                            </Button>
-                        </footer>
+                        <div className="form-group">
+                            <label className="form-label">Moneda</label>
+                            <select className="form-input" value={convertirForm.moneda}
+                                onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+                                <option value="ARS">ARS</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Fecha venta</label>
+                        <input type="date" className="form-input" value={convertirForm.fechaVenta}
+                            onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Observaciones</label>
+                        <textarea className="form-input" rows={3} value={convertirForm.observaciones}
+                            onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))} />
                     </div>
                 </div>
-            )}
+            </Modal>
 
-            {/* DELETE MODAL */}
-            {deleteId !== null && (
-                <div className="modal-overlay" onClick={() => setDeleteId(null)}>
-                    <div className="modal-box" style={{ maxWidth: '440px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                        <div className="p-12">
-                            <div className="w-24 h-24 bg-red-900/20 text-red-500 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-red-500/20 shadow-inner">
-                                <Trash2 size={44} />
-                            </div>
-                            <h2 className="text-2xl font-black mb-2 text-white italic">Revocar Cotización</h2>
-                            <p className="text-slate-400 text-sm mb-10 leading-relaxed">
-                                ¿Desea proceder con la destrucción total del presupuesto <span className="text-red-500 font-bold">#{deleteId}</span>? Esta acción purgará los registros comerciales del sistema.
-                            </p>
-                            <div className="flex gap-4">
-                                <Button variant="secondary" style={{ flex: 1 }} onClick={() => setDeleteId(null)}>Abortar</Button>
-                                <Button variant="danger" style={{ flex: 1 }} onClick={handleDelete}>Confirmar Baja</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* DELETE CONFIRM */}
+            <ConfirmDialog
+                isOpen={deleteId !== null}
+                title="Eliminar presupuesto"
+                message="¿Eliminar este presupuesto? Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                type="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteId(null)}
+            />
 
         </div>
     );

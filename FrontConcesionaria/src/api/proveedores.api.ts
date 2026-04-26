@@ -1,9 +1,10 @@
 import client from './client';
 import type { Proveedor, ProveedorFilter } from '../types/proveedor.types';
 import type { PaginatedResponse } from '../types/api.types';
+import type { PaginationOptions } from '../types/common.types';
 
 export const proveedoresApi = {
-    getAll: (filters: ProveedorFilter = {}, options: any = {}) => {
+    getAll: (filters: ProveedorFilter = {}, options: PaginationOptions = {}) => {
         return client.get<PaginatedResponse<Proveedor>>('/proveedores', {
             params: { ...filters, ...options }
         });

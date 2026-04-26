@@ -21,43 +21,54 @@ const Modal: React.FC<ModalProps> = ({
     maxWidth = '600px',
     footer
 }) => {
+    // Pattern "Adjusting state during render" — sincroniza render con isOpen
+    // sin pasar por useEffect (recomendado por React 19 docs).
     const [render, setRender] = useState(isOpen);
+    const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+    if (isOpen !== prevIsOpen) {
+        setPrevIsOpen(isOpen);
+        if (isOpen) setRender(true); // apertura: render inmediato
+    }
+
+    // Cierre diferido: 300ms para dejar correr la animación de salida.
+    useEffect(() => {
+        if (isOpen) return;
+        const timer = setTimeout(() => setRender(false), 300);
+        return () => clearTimeout(timer);
+    }, [isOpen]);
+
+    // Lock del scroll del body mientras el modal está abierto (puro side effect).
+    useEffect(() => {
+        if (!isOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, [isOpen]);
 
     useEffect(() => {
-        if (isOpen) {
-            setRender(true);
-            document.body.style.overflow = 'hidden';
-        } else {
-            const timer = setTimeout(() => {
-                setRender(false);
-                document.body.style.overflow = 'unset';
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen]);
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
 
     if (!render) return null;
 
     const modalContent = (
         <div
-            className={`modal-overlay-managed ${isOpen ? 'active' : ''}`}
+            className={`modal-overlay is-animated ${isOpen ? 'active' : ''}`}
             onClick={onClose}
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: '100vw',
-                height: '100vh',
-                margin: 0,
-                padding: '2rem',
-            }}
+            role="presentation"
         >
             <div
-                className={`modal-box glass shadow-glow ${isOpen ? 'active' : ''}`}
+                className={`modal-box ${isOpen ? 'active' : ''}`}
                 style={{ maxWidth }}
                 onClick={e => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
             >
                 <header className="modal-header">
                     <div>
@@ -66,7 +77,12 @@ const Modal: React.FC<ModalProps> = ({
                             <p className="modal-subtitle">{subtitle}</p>
                         )}
                     </div>
-                    <button className="icon-btn close-modal-btn" onClick={onClose}>
+                    <button
+                        className="icon-btn close-modal-btn"
+                        onClick={onClose}
+                        aria-label="Cerrar"
+                        type="button"
+                    >
                         <X size={20} />
                     </button>
                 </header>
@@ -81,26 +97,6 @@ const Modal: React.FC<ModalProps> = ({
                     </footer>
                 )}
             </div>
-
-            <style>{`
-                .modal-subtitle {
-                    color: var(--text-secondary, #94a3b8);
-                    font-size: 0.9375rem;
-                    margin-top: 0.5rem;
-                    font-weight: 500;
-                    letter-spacing: normal;
-                    text-transform: none;
-                }
-
-                .close-modal-btn {
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-
-                .close-modal-btn:hover {
-                    transform: rotate(90deg);
-                    background: var(--bg-elevated, #e2e8f0);
-                }
-            `}</style>
         </div>
     );
 

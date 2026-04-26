@@ -21,7 +21,7 @@ export const useConfirm = () => {
                         setLoading(false);
                         hideConfirm();
                         resolve();
-                    } catch (err) {
+                    } catch {
                         setLoading(false);
                     }
                 },

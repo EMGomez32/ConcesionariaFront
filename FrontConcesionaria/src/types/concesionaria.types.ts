@@ -23,4 +23,4 @@ export interface CreateConcesionariaDto {
     direccion?: string;
 }
 
-export interface UpdateConcesionariaDto extends Partial<CreateConcesionariaDto> {}
+export type UpdateConcesionariaDto = Partial<CreateConcesionariaDto>;

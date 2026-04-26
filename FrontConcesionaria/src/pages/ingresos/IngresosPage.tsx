@@ -7,6 +7,8 @@ import { proveedoresApi } from '../../api/proveedores.api';
 import { useUIStore } from '../../store/uiStore';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
     Plus, Trash2, RefreshCw,
     LogIn, ChevronLeft, ChevronRight,
@@ -346,117 +348,104 @@ const IngresosPage = () => {
                 </Button>
             </div>
 
-            {/* Registrar Ingreso Modal */}
-            {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-box" style={{ maxWidth: '780px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">Certificación de Ingreso</h2>
-                            <p className="text-sm text-muted">Complete el formulario oficial de recepción de stock para auditoría interna.</p>
-                        </header>
-
-                        <div className="modal-body space-y-8">
-                            <div className="form-group">
-                                <label className="form-label text-blue-400">Unidad del Catálogo a Ingresar *</label>
-                                <select className="form-input text-lg font-bold" value={form.vehiculoId} onChange={e => setForm(f => ({ ...f, vehiculoId: e.target.value }))}>
-                                    <option value="">Buscar unidad por marca, modelo o dominio...</option>
-                                    {vehiculos.map(v => (
-                                        <option key={v.id} value={v.id}>
-                                            {`${v.marca} ${v.modelo} ${v.dominio ? `(${v.dominio})` : ''}`.toUpperCase()}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Sucursal Receptora de Stock *</label>
-                                    <select className="form-input" value={form.sucursalId} onChange={e => setForm(f => ({ ...f, sucursalId: e.target.value }))}>
-                                        <option value="">Selección de plaza...</option>
-                                        {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Modalidad de Adquisición *</label>
-                                    <select className="form-input" value={form.tipoIngreso} onChange={e => setForm(f => ({ ...f, tipoIngreso: e.target.value as TipoIngreso }))}>
-                                        <option value="">Origen de la unidad...</option>
-                                        {TIPO_INGRESO_OPTS.map(o => <option key={o.value} value={o.value}>{o.label.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Fecha de Comprobante / Recepción *</label>
-                                    <input type="date" className="form-input" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Valor de Toma Estimado (ARS)</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-black">$</div>
-                                        <input type="number" className="form-input pl-8 font-black text-xl" placeholder="0.00" value={form.valorTomado} onChange={e => setForm(f => ({ ...f, valorTomado: e.target.value }))} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Cliente Origen (Particular)</label>
-                                    <select className="form-input" value={form.clienteOrigenId} onChange={e => setForm(f => ({ ...f, clienteOrigenId: e.target.value, proveedorOrigenId: '' }))}>
-                                        <option value="">IDENTIFICACIÓN CLIENTE...</option>
-                                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Proveedor de Stock (Empresa)</label>
-                                    <select className="form-input" value={form.proveedorOrigenId} onChange={e => setForm(f => ({ ...f, proveedorOrigenId: e.target.value, clienteOrigenId: '' }))}>
-                                        <option value="">IDENTIFICACIÓN PROVEEDOR...</option>
-                                        {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Notas de Recepción y Estado</label>
-                                <textarea className="form-input" rows={2} placeholder="Especifique estado del vehículo, documentación o faltantes..." value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))} style={{ resize: 'none' }} />
-                            </div>
-
-                            {formError && (
-                                <div className="p-4 bg-red-900/10 border border-red-500/20 rounded-2xl text-red-500 text-xs flex items-center gap-3">
-                                    <AlertCircle size={16} />
-                                    <span className="font-bold uppercase letter-spacing-wide">{formError}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
-                            <Button variant="primary" onClick={handleSubmit} loading={saving} className="min-w-[200px]">
-                                Registrar Ingreso de Stock
-                            </Button>
-                        </footer>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="Certificación de Ingreso"
+                subtitle="Complete el formulario oficial de recepción de stock para auditoría interna."
+                maxWidth="780px"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+                        <Button variant="primary" onClick={handleSubmit} loading={saving}>
+                            Registrar Ingreso
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-8">
+                    <div className="form-group">
+                        <label className="form-label">Unidad del Catálogo a Ingresar *</label>
+                        <select className="form-input text-lg font-bold" value={form.vehiculoId} onChange={e => setForm(f => ({ ...f, vehiculoId: e.target.value }))}>
+                            <option value="">Buscar unidad por marca, modelo o dominio...</option>
+                            {vehiculos.map(v => (
+                                <option key={v.id} value={v.id}>
+                                    {`${v.marca} ${v.modelo} ${v.dominio ? `(${v.dominio})` : ''}`.toUpperCase()}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                </div>
-            )}
 
-            {/* Confirmación Eliminar */}
-            {deletingId !== null && (
-                <div className="modal-overlay" onClick={() => setDeletingId(null)}>
-                    <div className="modal-box" style={{ maxWidth: '420px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                        <div className="p-10">
-                            <div className="w-20 h-20 bg-red-900/20 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-red-500/20 shadow-inner">
-                                <Trash2 size={40} />
-                            </div>
-                            <h3 className="text-2xl font-black mb-2 text-white">Anular Ingreso</h3>
-                            <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-                                ¿Está seguro de anular el ingreso oficial <span className="text-red-500 font-bold">#{deletingId}</span>?
-                                <br />Esta acción impactará directamente en la disponibilidad de stock.
-                            </p>
-                            <div className="flex gap-3">
-                                <Button variant="secondary" style={{ flex: 1 }} onClick={() => setDeletingId(null)}>Cerrar</Button>
-                                <Button variant="danger" style={{ flex: 1 }} onClick={handleDelete} loading={deleteLoading}>Confirmar Baja</Button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                            <label className="form-label">Sucursal Receptora *</label>
+                            <select className="form-input" value={form.sucursalId} onChange={e => setForm(f => ({ ...f, sucursalId: e.target.value }))}>
+                                <option value="">Selección de plaza...</option>
+                                {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Modalidad de Adquisición *</label>
+                            <select className="form-input" value={form.tipoIngreso} onChange={e => setForm(f => ({ ...f, tipoIngreso: e.target.value as TipoIngreso }))}>
+                                <option value="">Origen de la unidad...</option>
+                                {TIPO_INGRESO_OPTS.map(o => <option key={o.value} value={o.value}>{o.label.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Fecha de Recepción *</label>
+                            <input type="date" className="form-input" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Valor de Toma (ARS)</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-black">$</div>
+                                <input type="number" className="form-input pl-8 font-black text-xl" placeholder="0.00" value={form.valorTomado} onChange={e => setForm(f => ({ ...f, valorTomado: e.target.value }))} />
                             </div>
                         </div>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                            <label className="form-label">Cliente Origen (Particular)</label>
+                            <select className="form-input" value={form.clienteOrigenId} onChange={e => setForm(f => ({ ...f, clienteOrigenId: e.target.value, proveedorOrigenId: '' }))}>
+                                <option value="">IDENTIFICACIÓN CLIENTE...</option>
+                                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Proveedor (Empresa)</label>
+                            <select className="form-input" value={form.proveedorOrigenId} onChange={e => setForm(f => ({ ...f, proveedorOrigenId: e.target.value, clienteOrigenId: '' }))}>
+                                <option value="">IDENTIFICACIÓN PROVEEDOR...</option>
+                                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Notas de Recepción y Estado</label>
+                        <textarea className="form-input" rows={2} placeholder="Especifique estado del vehículo, documentación o faltantes..." value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))} style={{ resize: 'none' }} />
+                    </div>
+
+                    {formError && (
+                        <div className="uploader-alert uploader-alert-error">
+                            <AlertCircle size={14} />
+                            <span>{formError}</span>
+                        </div>
+                    )}
                 </div>
-            )}
+            </Modal>
+
+            <ConfirmDialog
+                isOpen={deletingId !== null}
+                title="Anular Ingreso"
+                message={`¿Anular el ingreso #${deletingId}? Esta acción impactará en la disponibilidad de stock.`}
+                confirmLabel="Confirmar baja"
+                cancelLabel="Cerrar"
+                type="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setDeletingId(null)}
+                loading={deleteLoading}
+            />
 
             <style>{`
                 .icon-badge {

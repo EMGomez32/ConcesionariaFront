@@ -1,18 +1,21 @@
 import { useAuthStore } from '../../store/authStore';
-import { LogOut, Sun, Moon, User, Bell, Menu } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { LogOut, Sun, Moon, User, Bell, Menu, Search } from 'lucide-react';
+import { useState } from 'react';
+import Breadcrumbs from './Breadcrumbs';
+import { useCommandPaletteStore } from '../../store/commandPaletteStore';
 
 const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const { user, logout } = useAuthStore();
-  const [isDark, setIsDark] = useState(false);
+  const openPalette = useCommandPaletteStore((s) => s.open);
 
-  useEffect(() => {
+  // Inicialización lazy desde localStorage + sync inicial al body (una sola vez al montar).
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
     const theme = localStorage.getItem('theme');
-    if (theme === 'dark') {
-      setIsDark(true);
-      document.body.setAttribute('data-theme', 'dark');
-    }
-  }, []);
+    const initial = theme === 'dark';
+    if (initial) document.body.setAttribute('data-theme', 'dark');
+    return initial;
+  });
 
   const toggleTheme = () => {
     const newTheme = !isDark ? 'dark' : 'light';
@@ -21,22 +24,35 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     localStorage.setItem('theme', newTheme);
   };
 
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
   return (
     <header className="top-bar">
-      <div className="search-placeholder">
-        <button className="mobile-menu-btn" onClick={onMenuClick}>
-          <Menu size={24} />
+      <div className="top-bar-left">
+        <button className="mobile-menu-btn" onClick={onMenuClick} aria-label="Abrir menú">
+          <Menu size={22} />
         </button>
-        <span className="breadcrumb">Panel / Dashboard</span>
+        <Breadcrumbs />
       </div>
 
       <div className="top-bar-actions">
+        <button
+          type="button"
+          className="cmdk-trigger"
+          onClick={openPalette}
+          aria-label="Abrir buscador rápido"
+        >
+          <Search size={14} />
+          <span className="cmdk-trigger-text">Buscar</span>
+          <kbd className="cmdk-trigger-kbd">{isMac ? '⌘' : 'Ctrl'} K</kbd>
+        </button>
+
         <div className="action-buttons-group">
-          <button className="icon-button" onClick={toggleTheme} title="Cambiar tema">
+          <button className="icon-button" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          <button className="icon-button" title="Notificaciones">
+          <button className="icon-button" title="Notificaciones" aria-label="Notificaciones">
             <Bell size={18} />
             <span className="notification-dot"></span>
           </button>
@@ -61,42 +77,78 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
       <style>{`
         .top-bar {
-          height: 72px;
-          background: rgba(var(--bg-card), 0.8);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          height: 68px;
+          background: color-mix(in srgb, var(--bg-card) 78%, transparent);
+          backdrop-filter: blur(16px) saturate(140%);
+          -webkit-backdrop-filter: blur(16px) saturate(140%);
           border-bottom: 1px solid var(--border);
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 2rem;
+          padding: 0 var(--space-8);
           position: sticky;
           top: 0;
           z-index: 100;
         }
 
-        .search-placeholder {
+        .top-bar-left {
             display: flex;
             align-items: center;
+            gap: var(--space-3);
+            min-width: 0;
+            flex: 1;
         }
-        
-        .breadcrumb {
-            font-size: 0.85rem;
+
+        .cmdk-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem 0.4rem 0.65rem;
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
             color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: var(--text-sm);
             font-weight: 500;
+            cursor: pointer;
+            transition: border-color var(--duration-base) var(--easing-soft),
+                        color var(--duration-base) var(--easing-soft),
+                        background var(--duration-base) var(--easing-soft);
+        }
+
+        .cmdk-trigger:hover {
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .cmdk-trigger-text {
+            display: inline-block;
+        }
+
+        .cmdk-trigger-kbd {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 1px 6px;
+            border-radius: var(--radius-xs);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
         }
 
         .top-bar-actions {
           display: flex;
           align-items: center;
-          gap: 1.25rem;
+          gap: var(--space-5);
         }
 
         .action-buttons-group {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding-right: 1.25rem;
+            gap: var(--space-2);
+            padding-right: var(--space-5);
             border-right: 1px solid var(--border);
         }
 
@@ -108,30 +160,36 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 10px;
-          transition: all 0.2s;
+          border-radius: var(--radius-md);
+          background: transparent;
+          border: 1px solid transparent;
+          transition: background var(--duration-base) var(--easing-soft),
+                      color var(--duration-base) var(--easing-soft),
+                      border-color var(--duration-base) var(--easing-soft);
         }
 
         .icon-button:hover {
           background: var(--bg-secondary);
+          border-color: var(--border);
           color: var(--accent);
         }
 
         .notification-dot {
           position: absolute;
-          top: 10px;
-          right: 10px;
-          width: 6px;
-          height: 6px;
-          background: var(--danger);
+          top: 9px;
+          right: 9px;
+          width: 7px;
+          height: 7px;
+          background: var(--accent-2);
           border-radius: 50%;
-          border: 1.5px solid var(--bg-card);
+          border: 2px solid var(--bg-card);
+          box-shadow: 0 0 8px rgba(var(--accent-2-rgb), 0.65);
         }
 
         .user-profile {
           display: flex;
           align-items: center;
-          gap: 0.875rem;
+          gap: var(--space-3);
         }
 
         .user-info {
@@ -142,8 +200,9 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         }
 
         .user-name {
-          font-weight: 700;
-          font-size: 0.875rem;
+          font-family: var(--font-display);
+          font-weight: 600;
+          font-size: var(--text-sm);
           color: var(--text-primary);
         }
 
@@ -152,7 +211,7 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           color: var(--text-muted);
           text-transform: uppercase;
           font-weight: 600;
-          letter-spacing: 0.025em;
+          letter-spacing: 0.08em;
         }
 
         .avatar-wrapper {
@@ -162,13 +221,14 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         .avatar {
           width: 40px;
           height: 40px;
-          background: var(--accent-light);
-          border: 1px solid var(--accent);
-          border-radius: 12px;
+          background: var(--accent-gradient);
+          border: 1px solid rgba(var(--accent-rgb), 0.4);
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: var(--accent);
+          color: #ffffff;
+          box-shadow: var(--glow-accent);
         }
 
         .status-indicator {
@@ -180,6 +240,7 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             background: var(--success);
             border: 2px solid var(--bg-card);
             border-radius: 50%;
+            box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.7);
         }
 
         .logout-button {
@@ -189,19 +250,25 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 10px;
-          margin-left: 0.25rem;
+          border-radius: var(--radius-md);
+          background: transparent;
+          border: 1px solid transparent;
+          margin-left: var(--space-1);
+          transition: background var(--duration-base) var(--easing-soft),
+                      color var(--duration-base) var(--easing-soft),
+                      border-color var(--duration-base) var(--easing-soft);
         }
 
         .logout-button:hover {
-          background: #fee2e2;
+          background: rgba(239, 68, 68, 0.10);
+          border-color: rgba(239, 68, 68, 0.25);
           color: var(--danger);
         }
 
         .mobile-menu-btn {
             display: none;
             color: var(--text-primary);
-            margin-right: 1rem;
+            margin-right: var(--space-4);
             background: transparent;
             border: none;
             padding: 4px;
@@ -212,9 +279,18 @@ const TopBar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                 display: block;
             }
             .top-bar {
-                padding: 0 1rem;
+                padding: 0 var(--space-4);
             }
             .user-info {
+                display: none;
+            }
+            .cmdk-trigger-text {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .cmdk-trigger-kbd {
                 display: none;
             }
         }

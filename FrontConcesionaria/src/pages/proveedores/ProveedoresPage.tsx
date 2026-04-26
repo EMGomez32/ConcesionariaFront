@@ -24,6 +24,8 @@ import {
 import Modal from '../../components/ui/Modal';
 import { useConfirm } from '../../hooks/useConfirm';
 import type { PaginatedResponse } from '../../types/api.types';
+import type { ProveedorFilter } from '../../types/proveedor.types';
+import { getApiErrorMessage } from '../../utils/error';
 
 const TIPO_COLORS: Record<string, string> = {
     importadora: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
@@ -49,7 +51,7 @@ const ProveedoresPage: React.FC = () => {
     const { data: response, isLoading, isError, refetch } = useQuery<PaginatedResponse<Proveedor>, Error>({
         queryKey: ['proveedores', searchTerm, filterTipo, filterActivo],
         queryFn: async () => {
-            const filters: any = {};
+            const filters: ProveedorFilter = {};
             if (searchTerm.trim()) filters.nombre = searchTerm;
             if (filterTipo) filters.tipo = filterTipo;
             if (filterActivo !== '') filters.activo = filterActivo === 'true';
@@ -68,8 +70,8 @@ const ProveedoresPage: React.FC = () => {
             addToast('Proveedor registrado correctamente', 'success');
             handleCloseModal();
         },
-        onError: (err: any) => {
-            addToast(err?.message || 'Error al registrar proveedor', 'error');
+        onError: (err) => {
+            addToast(getApiErrorMessage(err, 'Error al registrar proveedor'), 'error');
         }
     });
 
@@ -80,8 +82,8 @@ const ProveedoresPage: React.FC = () => {
             addToast('Datos actualizados correctamente', 'success');
             handleCloseModal();
         },
-        onError: (err: any) => {
-            addToast(err?.message || 'Error al actualizar proveedor', 'error');
+        onError: (err) => {
+            addToast(getApiErrorMessage(err, 'Error al actualizar proveedor'), 'error');
         }
     });
 
@@ -91,8 +93,8 @@ const ProveedoresPage: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['proveedores'] });
             addToast('Proveedor eliminado correctamente', 'success');
         },
-        onError: (err: any) => {
-            addToast(err?.message || 'Error al eliminar proveedor', 'error');
+        onError: (err) => {
+            addToast(getApiErrorMessage(err, 'Error al eliminar proveedor'), 'error');
         }
     });
 

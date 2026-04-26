@@ -3,6 +3,8 @@ import { gastosFijosApi, type GastoFijo } from '../../api/gastos-fijos.api';
 import { gastosFijosCategoriaApi, type GastoFijoCategoria } from '../../api/gastos-fijos-categorias.api';
 import { sucursalesApi } from '../../api/sucursales.api';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useUIStore } from '../../store/uiStore';
 import Badge from '../../components/ui/Badge';
 import {
@@ -81,6 +83,17 @@ const GastosFijosPage = () => {
     const [deleteCatTarget, setDeleteCatTarget] = useState<GastoFijoCategoria | null>(null);
     const [deletingCat, setDeletingCat] = useState(false);
 
+    const loadCategorias = useCallback(async () => {
+        try {
+            const res = await gastosFijosCategoriaApi.getAll();
+            const raw = res as unknown as { data?: GastoFijoCategoria[] | { results?: GastoFijoCategoria[] } };
+            const d = raw?.data;
+            setCategorias(Array.isArray(d) ? d : (d && 'results' in d ? d.results ?? [] : []));
+        } catch {
+            addToast('Error al cargar categorías', 'error');
+        }
+    }, [addToast]);
+
     /* ── Bootstrap ───────────────────────────────────── */
     useEffect(() => {
         const loadInitialData = async () => {
@@ -92,18 +105,7 @@ const GastosFijosPage = () => {
             } catch { /* silencio */ }
         };
         loadInitialData();
-    }, []);
-
-    const loadCategorias = useCallback(async () => {
-        try {
-            const res = await gastosFijosCategoriaApi.getAll();
-            const raw = res as unknown as { data?: GastoFijoCategoria[] | { results?: GastoFijoCategoria[] } };
-            const d = raw?.data;
-            setCategorias(Array.isArray(d) ? d : (d && 'results' in d ? d.results ?? [] : []));
-        } catch {
-            addToast('Error al cargar categorías', 'error');
-        }
-    }, [addToast]);
+    }, [loadCategorias]);
 
     /* ── Gastos fijos ────────────────────────────────── */
     const loadGastos = useCallback(async (pg = 1) => {
@@ -545,114 +547,104 @@ const GastosFijosPage = () => {
                 )}
             </div>
 
-            {/* Registrar / Editar Modal */}
-            {(showCreate || editTarget) && (
-                <div className="modal-overlay" onClick={() => { setShowCreate(false); setEditTarget(null); }}>
-                    <div className="modal-box" style={{ maxWidth: '720px' }} onClick={e => e.stopPropagation()}>
-                        <header className="modal-header">
-                            <h2 className="text-2xl font-black">{editTarget ? 'Actualización de Carga' : 'Certificación de Egreso'}</h2>
-                            <p className="text-sm text-muted">Asegúrese de adjuntar digitalmente el comprobante de respaldo.</p>
-                        </header>
-
-                        <div className="modal-body space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Rubro del Gasto *</label>
-                                    <select className="form-input" value={editTarget ? editForm.categoriaId : createForm.categoriaId}
-                                        onChange={e => editTarget ? setEditForm(f => ({ ...f, categoriaId: e.target.value })) : setCreateForm(f => ({ ...f, categoriaId: e.target.value }))}>
-                                        <option value="">Selección de cuenta...</option>
-                                        {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Período Fiscal *</label>
-                                    <div className="flex gap-4">
-                                        <select className="form-input" value={editTarget ? editForm.mes : createForm.mes}
-                                            onChange={e => editTarget ? setEditForm(f => ({ ...f, mes: e.target.value })) : setCreateForm(f => ({ ...f, mes: e.target.value }))}>
-                                            {MESES.map((m, i) => <option key={i + 1} value={i + 1}>{m.toUpperCase()}</option>)}
-                                        </select>
-                                        <select className="form-input" value={editTarget ? editForm.anio : createForm.anio}
-                                            onChange={e => editTarget ? setEditForm(f => ({ ...f, anio: e.target.value })) : setCreateForm(f => ({ ...f, anio: e.target.value }))}>
-                                            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Descripción Detallada del Concepto *</label>
-                                <textarea className="form-input" rows={3} value={editTarget ? editForm.descripcion : createForm.descripcion}
-                                    onChange={e => editTarget ? setEditForm(f => ({ ...f, descripcion: e.target.value })) : setCreateForm(f => ({ ...f, descripcion: e.target.value }))}
-                                    placeholder="Justificación y desglose del egreso..." style={{ resize: 'none' }} />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="form-group">
-                                    <label className="form-label">Importe Liquidado (ARS) *</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-black">$</div>
-                                        <input type="number" className="form-input pl-8 font-black text-xl" value={editTarget ? editForm.monto : createForm.monto}
-                                            onChange={e => editTarget ? setEditForm(f => ({ ...f, monto: e.target.value })) : setCreateForm(f => ({ ...f, monto: e.target.value }))} />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Plaza / Sucursal</label>
-                                    <select className="form-input" value={editTarget ? editForm.sucursalId : createForm.sucursalId}
-                                        onChange={e => editTarget ? setEditForm(f => ({ ...f, sucursalId: e.target.value })) : setCreateForm(f => ({ ...f, sucursalId: e.target.value }))}>
-                                        <option value="">CENTRALIZADO (CORPORATIVO)</option>
-                                        {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Link de Comprobante Digital (PDF/IMG)</label>
-                                <div className="relative">
-                                    <ExternalLink size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-                                    <input className="form-input pl-11 text-xs" value={editTarget ? editForm.comprobanteUrl : createForm.comprobanteUrl}
-                                        onChange={e => editTarget ? setEditForm(f => ({ ...f, comprobanteUrl: e.target.value })) : setCreateForm(f => ({ ...f, comprobanteUrl: e.target.value }))}
-                                        placeholder="https://bucket-almacenamiento.com/factura-123.pdf" />
-                                </div>
-                            </div>
-
-                            {(createError || editError) && (
-                                <div className="p-4 bg-red-900/10 border border-red-500/20 rounded-2xl text-red-500 text-xs flex items-center gap-3">
-                                    <AlertCircle size={16} />
-                                    <span className="font-bold uppercase tracking-tight">{createError || editError}</span>
-                                </div>
-                            )}
+            <Modal
+                isOpen={showCreate || editTarget !== null}
+                onClose={() => { setShowCreate(false); setEditTarget(null); }}
+                title={editTarget ? 'Actualización de Carga' : 'Certificación de Egreso'}
+                subtitle="Asegúrese de adjuntar digitalmente el comprobante de respaldo."
+                maxWidth="720px"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => { setShowCreate(false); setEditTarget(null); }}>Abortar</Button>
+                        <Button variant="primary" onClick={editTarget ? handleEdit : handleCreate} loading={saving || savingEdit}>
+                            {editTarget ? 'Confirmar Cambios' : 'Registrar'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                            <label className="form-label">Rubro del Gasto *</label>
+                            <select className="form-input" value={editTarget ? editForm.categoriaId : createForm.categoriaId}
+                                onChange={e => editTarget ? setEditForm(f => ({ ...f, categoriaId: e.target.value })) : setCreateForm(f => ({ ...f, categoriaId: e.target.value }))}>
+                                <option value="">Selección de cuenta...</option>
+                                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()}</option>)}
+                            </select>
                         </div>
-
-                        <footer className="modal-footer">
-                            <Button variant="secondary" onClick={() => { setShowCreate(false); setEditTarget(null); }}>Abortar</Button>
-                            <Button variant="primary" onClick={editTarget ? handleEdit : handleCreate} loading={saving || savingEdit} className="min-w-[200px]">
-                                {editTarget ? 'Confirmar Cambios' : 'Efectivizar Registro'}
-                            </Button>
-                        </footer>
-                    </div>
-                </div>
-            )}
-
-            {/* Delete Modal */}
-            {(deleteTarget || deleteCatTarget) && (
-                <div className="modal-overlay" onClick={() => { setDeleteTarget(null); setDeleteCatTarget(null); }}>
-                    <div className="modal-box" style={{ maxWidth: '420px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                        <div className="p-10">
-                            <div className="w-20 h-20 bg-red-900/20 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-red-500/20 shadow-inner">
-                                <Trash2 size={40} />
-                            </div>
-                            <h2 className="text-2xl font-black mb-2 text-white">¿Ejecutar Baja?</h2>
-                            <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-                                Esta operación eliminará irremediablemente {deleteTarget ? 'el registro por $' + Number(deleteTarget.monto).toLocaleString('es-AR') : 'la categoría "' + deleteCatTarget?.nombre + '"'}.
-                            </p>
+                        <div className="form-group">
+                            <label className="form-label">Período Fiscal *</label>
                             <div className="flex gap-4">
-                                <Button variant="secondary" style={{ flex: 1 }} onClick={() => { setDeleteTarget(null); setDeleteCatTarget(null); }}>Cerrar</Button>
-                                <Button variant="danger" style={{ flex: 1 }} onClick={deleteTarget ? handleDelete : handleCatDelete} loading={deleting || deletingCat}>Eliminar</Button>
+                                <select className="form-input" value={editTarget ? editForm.mes : createForm.mes}
+                                    onChange={e => editTarget ? setEditForm(f => ({ ...f, mes: e.target.value })) : setCreateForm(f => ({ ...f, mes: e.target.value }))}>
+                                    {MESES.map((m, i) => <option key={i + 1} value={i + 1}>{m.toUpperCase()}</option>)}
+                                </select>
+                                <select className="form-input" value={editTarget ? editForm.anio : createForm.anio}
+                                    onChange={e => editTarget ? setEditForm(f => ({ ...f, anio: e.target.value })) : setCreateForm(f => ({ ...f, anio: e.target.value }))}>
+                                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
                             </div>
                         </div>
                     </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Descripción Detallada *</label>
+                        <textarea className="form-input" rows={3} value={editTarget ? editForm.descripcion : createForm.descripcion}
+                            onChange={e => editTarget ? setEditForm(f => ({ ...f, descripcion: e.target.value })) : setCreateForm(f => ({ ...f, descripcion: e.target.value }))}
+                            placeholder="Justificación y desglose del egreso..." style={{ resize: 'none' }} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                            <label className="form-label">Importe (ARS) *</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-black">$</div>
+                                <input type="number" className="form-input pl-8 font-black text-xl" value={editTarget ? editForm.monto : createForm.monto}
+                                    onChange={e => editTarget ? setEditForm(f => ({ ...f, monto: e.target.value })) : setCreateForm(f => ({ ...f, monto: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Plaza / Sucursal</label>
+                            <select className="form-input" value={editTarget ? editForm.sucursalId : createForm.sucursalId}
+                                onChange={e => editTarget ? setEditForm(f => ({ ...f, sucursalId: e.target.value })) : setCreateForm(f => ({ ...f, sucursalId: e.target.value }))}>
+                                <option value="">CENTRALIZADO (CORPORATIVO)</option>
+                                {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Link de Comprobante Digital (PDF/IMG)</label>
+                        <div className="relative">
+                            <ExternalLink size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+                            <input className="form-input pl-11 text-xs" value={editTarget ? editForm.comprobanteUrl : createForm.comprobanteUrl}
+                                onChange={e => editTarget ? setEditForm(f => ({ ...f, comprobanteUrl: e.target.value })) : setCreateForm(f => ({ ...f, comprobanteUrl: e.target.value }))}
+                                placeholder="https://bucket-almacenamiento.com/factura-123.pdf" />
+                        </div>
+                    </div>
+
+                    {(createError || editError) && (
+                        <div className="uploader-alert uploader-alert-error">
+                            <AlertCircle size={14} />
+                            <span>{createError || editError}</span>
+                        </div>
+                    )}
                 </div>
-            )}
+            </Modal>
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null || deleteCatTarget !== null}
+                title="¿Ejecutar baja?"
+                message={`Esta operación eliminará irremediablemente ${deleteTarget
+                    ? 'el registro por $' + Number(deleteTarget.monto).toLocaleString('es-AR')
+                    : 'la categoría "' + deleteCatTarget?.nombre + '"'}.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cerrar"
+                type="danger"
+                onConfirm={deleteTarget ? handleDelete : handleCatDelete}
+                onCancel={() => { setDeleteTarget(null); setDeleteCatTarget(null); }}
+                loading={deleting || deletingCat}
+            />
 
         </div>
     );
