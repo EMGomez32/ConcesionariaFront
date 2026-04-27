@@ -15,7 +15,10 @@ WORKDIR /app
 ARG VITE_API_BASE_URL=http://localhost:3000/api
 
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+# `--include=dev` fuerza la instalación de devDependencies (vite, typescript,
+# eslint, @types/*) aunque NODE_ENV=production esté seteado por Coolify
+# durante el build. Sin esto, `npm run build` falla con errores de tipos.
+RUN npm ci --legacy-peer-deps --include=dev
 
 COPY . .
 
