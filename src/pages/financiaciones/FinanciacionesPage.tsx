@@ -278,10 +278,13 @@ const FinanciacionesPage = () => {
     const handlePagarCuota = async (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault(); return;
         if (pagoForm.monto <= 0) { addToast('El importe de recaudación debe ser mayor a 0', 'error'); return; }
-        if (!pagarCuota) return;
+        if (pagarCuota == null) return;
+        // Narrowing del state se pierde con el await posterior — fix con guard explícito
+        const cuotaActual = pagarCuota as Cuota;
+        const cuotaId = cuotaActual.id;
         setSavingPago(true);
         try {
-            await financiacionesApi.pagarCuota(pagarCuota.id, pagoForm);
+            await financiacionesApi.pagarCuota(cuotaId, pagoForm);
             addToast('Cobro procesado y acreditado con éxito', 'success');
             setPagarCuota(null);
             if (detailId !== null) refreshDetail(Number(detailId));
@@ -698,7 +701,7 @@ const FinanciacionesPage = () => {
                             <div className="card glass p-4 text-center border-slate-700/30 font-bold"><span className="text-[10px] text-muted block mb-1">SALDO PENDIENTE</span>${(detail.cuotasPlan ?? []).filter((c: Cuota) => c.estado !== 'pagada').reduce((s: number, c: Cuota) => s + (Number(c.montoCapital ?? 0) + Number(c.montoInteres ?? 0)), 0).toLocaleString('es-AR')}</div>
                             <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
                                 <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Valor de Cuota</span>
-                                <p className="text-2xl font-black text-white">${(detail.montoFinanciado / detail.cuotas).toLocaleString('es-AR')}</p>
+                                <p className="text-2xl font-black text-white">${(Number(detail.montoFinanciado) / Number(detail.cuotas)).toLocaleString('es-AR')}</p>
                             </div>
                             <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5">
                                 <span className="text-[10px] font-black text-muted uppercase block tracking-widest mb-2">Cierre de Ciclo</span>

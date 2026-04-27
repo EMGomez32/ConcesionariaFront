@@ -1,73 +1,87 @@
-# React + TypeScript + Vite
+# Concesionaria — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SPA del sistema multi-tenant de gestión de concesionarias. Consume la API del backend ([concesionariaBack](https://github.com/EMGomez32/concesionariaBack)).
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** + **TypeScript** estricto + **Vite**
+- **React Router 7** + **TanStack Query** (queries cacheadas)
+- **Zustand** para auth/UI store
+- Diseño con **design system propio** (CSS tokens, dark theme)
+- **Vitest** para tests unitarios
+- En producción se sirve con **nginx** (multi-stage Docker), con CSP estricta
 
-## React Compiler
+## Páginas implementadas
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Sección | Pantallas |
+|---|---|
+| Auth | Login, recuperar password, restablecer password, activar cuenta |
+| Admin (super_admin) | Concesionarias |
+| Tenant config | Sucursales, Usuarios (con flujo de invitación), Auditoría, Billing |
+| Stock | Vehículos (lista/detalle/alta), Catálogo (marcas/modelos/versiones), Ingresos, Movimientos, Reservas |
+| CRM | Clientes, Proveedores |
+| Operaciones | Presupuestos, Ventas |
+| Finanzas | Caja (movimientos + cierres diarios), Financiación, Solicitudes externas, Gastos vehiculares, Gastos fijos |
+| Postventa | Casos y reclamos |
 
-## Expanding the ESLint configuration
+## Desarrollo local
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+npm install
+cp .env.example .env
+# Editar VITE_API_BASE_URL si tu back no está en localhost:3000
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+npm run dev      # Vite dev server en http://localhost:5173
+npm run lint     # ESLint
+npm run build    # Build de producción → dist/
+npm run preview  # Servir el build localmente
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Variables de entorno
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Solo una, a configurar como **build arg** (Vite la inlinea al bundle):
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Variable | Descripción |
+|---|---|
+| `VITE_API_BASE_URL` | URL pública del backend, **terminando en `/api`**. Ej: `https://api.tudominio.com/api`. Default local: `http://localhost:3000/api`. |
+
+En runtime (solo nginx):
+
+| Variable | Descripción |
+|---|---|
+| `BACKEND_ORIGIN` | Origen del backend para la CSP de nginx. Si no se setea, se deriva de `VITE_API_BASE_URL` quitando el path. |
+
+## Despliegue
+
+Para deploy en Coolify ver [COOLIFY.md](./COOLIFY.md).
+
+El Dockerfile es multi-stage (build con Vite → nginx en runtime), con healthcheck, gzip, cache largo en assets versionados, y CSP parametrizada vía `envsubst`.
+
+```bash
+# Build local
+docker build \
+    --build-arg VITE_API_BASE_URL=https://api.tudominio.com/api \
+    -t concesionaria-front .
+
+docker run --rm -p 8080:80 \
+    -e BACKEND_ORIGIN=https://api.tudominio.com \
+    concesionaria-front
 ```
+
+## Estructura
+
+```
+src/
+├── api/              # Clients de los endpoints (axios + tipos)
+├── components/       # UI compartida (Button, Modal, Input...) + forms
+├── pages/            # Una carpeta por feature
+├── store/            # Zustand: authStore, uiStore, sidebarStore
+├── types/            # Tipos compartidos por dominio
+├── utils/            # Helpers (api, error, etc.)
+├── config/           # Configuración estática (nav, etc.)
+└── hooks/            # Hooks custom (useConcesionarias, etc.)
+```
+
+## Licencia
+
+Privado.
