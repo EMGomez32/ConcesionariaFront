@@ -20,6 +20,7 @@ import {
     BadgeCheck,
     BookOpen,
     Wallet as WalletIcon,
+    BarChart3,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -44,6 +45,7 @@ export const NAV_SECTIONS: NavSection[] = [
         title: 'General',
         items: [
             { label: 'Dashboard', path: '/', icon: LayoutDashboard, keywords: ['inicio', 'home', 'panel', 'resumen'] },
+            { label: 'Analytics', path: '/analytics', icon: BarChart3, keywords: ['kpi', 'reportes', 'estadisticas', 'powerbi', 'metricas', 'graficos'], adminOnly: true },
             { label: 'Concesionarias', path: '/concesionarias', icon: Building2, keywords: ['empresas', 'tenants'], superAdminOnly: true },
         ],
     },

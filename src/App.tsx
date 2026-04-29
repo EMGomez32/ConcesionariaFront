@@ -40,6 +40,7 @@ const BillingPage = lazy(() => import('./pages/billing/BillingPage'));
 const ConfiguracionPage = lazy(() => import('./pages/configuracion/ConfiguracionPage'));
 const CatalogoPage = lazy(() => import('./pages/catalogo/CatalogoPage'));
 const CajaPage = lazy(() => import('./pages/caja/CajaPage'));
+const AnalyticsPage = lazy(() => import('./pages/analytics/AnalyticsPage'));
 
 function App() {
   return (
@@ -99,6 +100,9 @@ function App() {
 
               {/* Caja (movimientos, cierres diarios) */}
               <Route path="/caja" element={<CajaPage />} />
+
+              {/* Analytics — KPIs y reportes para admin */}
+              <Route path="/analytics" element={<AnalyticsPage />} />
 
               {/* Otros */}
               <Route path="/financiaciones" element={<FinanciacionesPage />} />
