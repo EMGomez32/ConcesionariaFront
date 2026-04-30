@@ -1,4 +1,9 @@
-import axios, { type AxiosRequestConfig } from 'axios';
+import axios, {
+    AxiosError,
+    type AxiosRequestConfig,
+    type AxiosResponse,
+    type InternalAxiosRequestConfig,
+} from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const axiosInstance = axios.create({
@@ -19,32 +24,80 @@ axiosInstance.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Refresh-on-401 con LOCK para evitar thundering herd.
+//
+// Antes: 5 queries simultáneas → 401 cada una → 5 calls a /auth/refresh
+// (todas con el mismo refreshToken) → en backend, race condition; en front,
+// 4 de 5 fallan porque la primera ya rotó el token.
+//
+// Ahora: el primer 401 dispara UN solo refresh; los siguientes 401 esperan
+// la misma promise. Cuando termina, todos retry-ean con el token nuevo.
+//
+// También cambiamos `window.location.href = '/login'` (que rompe la SPA)
+// por `logout()` del store + un evento custom que el ProtectedRoute escucha.
+// ─────────────────────────────────────────────────────────────────────────────
+
+let refreshPromise: Promise<string | null> | null = null;
+
+/** Llamado cuando el refresh definitivamente falló — hay que volver al login. */
+const dispatchAuthExpired = () => {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+    }
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+    const { refreshToken, setAccessToken, logout } = useAuthStore.getState();
+    if (!refreshToken) return null;
+
+    try {
+        const response = await axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
+            { refreshToken }
+        );
+        const newAccess = response.data?.access ?? response.data?.data?.access;
+        if (!newAccess) throw new Error('No access token en la respuesta');
+        setAccessToken(newAccess);
+        return newAccess;
+    } catch (err) {
+        logout();
+        dispatchAuthExpired();
+        return null;
+    }
+};
+
 axiosInstance.interceptors.response.use(
-    (response) => response.data,
-    async (error) => {
-        const originalRequest = error.config;
+    (response: AxiosResponse) => response.data,
+    async (error: AxiosError) => {
+        const originalRequest = error.config as InternalAxiosRequestConfig & {
+            _retry?: boolean;
+        };
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Solo reintentamos UNA vez por request, y solo en 401.
+        if (
+            error.response?.status === 401 &&
+            originalRequest &&
+            !originalRequest._retry
+        ) {
             originalRequest._retry = true;
-            const { refreshToken, setAccessToken, logout } = useAuthStore.getState();
 
-            if (refreshToken) {
-                try {
-                    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/refresh`, {
-                        refreshToken,
-                    });
-
-                    const { access } = response.data;
-                    setAccessToken(access);
-
-                    originalRequest.headers.Authorization = `Bearer ${access}`;
-                    return axiosInstance(originalRequest);
-                } catch (refreshError) {
-                    logout();
-                    window.location.href = '/login';
-                    return Promise.reject(refreshError);
-                }
+            // Si ya hay un refresh en curso, esperamos a ese mismo. Esto es
+            // el lock: solo el primer 401 dispara el refresh; los siguientes
+            // se cuelgan de la misma promise.
+            if (!refreshPromise) {
+                refreshPromise = refreshAccessToken().finally(() => {
+                    refreshPromise = null;
+                });
             }
+
+            const newAccess = await refreshPromise;
+            if (!newAccess) {
+                return Promise.reject(error.response?.data || error.message);
+            }
+
+            originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+            return axiosInstance(originalRequest);
         }
 
         return Promise.reject(error.response?.data || error.message);
