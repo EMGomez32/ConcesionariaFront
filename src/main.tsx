@@ -5,6 +5,10 @@ import App from './App.tsx'
 import './index.css'
 import { useUIStore } from './store/uiStore'
 import { HelmetProvider } from 'react-helmet-async'
+import { initSentry } from './monitoring/sentry'
+
+// Sentry init antes que React. No-op si VITE_SENTRY_DSN no está seteado.
+initSentry();
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({

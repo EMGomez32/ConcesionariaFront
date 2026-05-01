@@ -1,0 +1,47 @@
+# CI del frontend — corre en cada push/PR a main.
+# Steps: install → typecheck → lint → format:check → test → build.
+
+name: CI Frontend
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    quality:
+        name: Lint + Typecheck + Test + Build
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+
+            - name: Install
+              run: npm ci --legacy-peer-deps --include=dev
+
+            - name: Typecheck
+              run: npm run typecheck
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Format check
+              run: npm run format:check
+              continue-on-error: true # Por ahora sin bloquear; activar después de format inicial
+
+            - name: Test
+              run: npm test -- --run
+
+            - name: Build
+              env:
+                  # CI build solo verifica que compile; la URL real se inyecta al
+                  # buildear la imagen Docker en deploy.
+                  VITE_API_BASE_URL: http://localhost:3000/api
+              run: npm run build
