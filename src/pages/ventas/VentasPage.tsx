@@ -21,66 +21,18 @@ import type { FormaPagoVenta, EstadoEntrega, Venta } from '../../types/venta.typ
 import type { ApiError } from '../../types/api.types';
 import VentaSubResources from '../../components/ventas/VentaSubResources';
 
-// ─── Tipos auxiliares ──────────────────────────────────────────────────────
-interface PagoRow { monto: number; metodo: 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque' | 'otro'; referencia: string; observaciones: string }
-interface ExtraRow { descripcion: string; monto: number; comprobanteUrl: string }
-interface CanjeRow { vehiculoCanjeId: number; valorTomado: number }
-
-interface VentaForm {
-    sucursalId: number;
-    clienteId: number;
-    vendedorId: number;
-    vehiculoId: number;
-    fechaVenta: string;
-    precioVenta: number;
-    moneda: 'ARS' | 'USD';
-    formaPago: FormaPagoVenta;
-    observaciones: string;
-    pagos: PagoRow[];
-    externos: ExtraRow[];
-    canjes: CanjeRow[];
-}
-
-// ─── Status maps ────────────────────────────────────────────────────────────
-const entregaStatusMap: Record<EstadoEntrega, { label: string; variant: 'warning' | 'danger' | 'info' | 'success' | 'default' }> = {
-    pendiente: { label: 'Pendiente', variant: 'warning' },
-    bloqueada: { label: 'Bloqueada', variant: 'danger' },
-    autorizada: { label: 'Autorizada', variant: 'info' },
-    entregada: { label: 'Entregada', variant: 'success' },
-    cancelada: { label: 'Cancelada', variant: 'default' },
-};
-
-const entregaTransitions: Record<EstadoEntrega, { label: string; next: EstadoEntrega }[]> = {
-    pendiente: [{ label: 'Bloquear Entrega', next: 'bloqueada' }, { label: 'Autorizar Entrega', next: 'autorizada' }],
-    bloqueada: [{ label: 'Autorizar Entrega', next: 'autorizada' }, { label: 'Anular Operación', next: 'cancelada' }],
-    autorizada: [{ label: 'Efectivizar Entrega', next: 'entregada' }, { label: 'Anular Operación', next: 'cancelada' }],
-    entregada: [],
-    cancelada: [],
-};
-
-const formaPagoLabels: Record<FormaPagoVenta, string> = {
-    contado: 'Contado / Efectivo',
-    transferencia: 'Transferencia Bancaria',
-    financiado_propio: 'Financiación Interna',
-    financiado_externo: 'Crédito Prendario / Uva',
-    canje_mas_diferencia: 'Canje + Saldo',
-    mixto: 'Ingresos Mixtos',
-};
-
-const metodoLabels: Record<string, string> = {
-    efectivo: 'Efectivo', transferencia: 'Transferencia',
-    tarjeta: 'Tarjeta', cheque: 'Cheque', otro: 'Otro / Billetera',
-};
-
-const today = () => new Date().toISOString().split('T')[0];
-const emptyForm = (): VentaForm => ({
-    sucursalId: 0, clienteId: 0, vendedorId: 0, vehiculoId: 0,
-    fechaVenta: today(), precioVenta: 0, moneda: 'ARS',
-    formaPago: 'contado', observaciones: '',
-    pagos: [], externos: [], canjes: [],
-});
-const emptyPago = (): PagoRow => ({ monto: 0, metodo: 'efectivo', referencia: '', observaciones: '' });
-const emptyCanjeRow = (): CanjeRow => ({ vehiculoCanjeId: 0, valorTomado: 0 });
+// Types y utils extraídos a archivos separados (Sprint 4) — antes estaban
+// inline acá inflando la page a 799 LOC.
+import type { VentaForm } from './ventas.types';
+import {
+    entregaStatusMap,
+    entregaTransitions,
+    formaPagoLabels,
+    metodoLabels,
+    emptyForm,
+    emptyPago,
+    emptyCanjeRow,
+} from './ventas.utils';
 
 const addPago = (setForm: React.Dispatch<React.SetStateAction<VentaForm>>) => {
     setForm(f => ({ ...f, pagos: [...f.pagos, emptyPago()] }));

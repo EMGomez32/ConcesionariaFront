@@ -1,6 +1,11 @@
 import type { EstadoPresupuesto } from '../../types/presupuesto.types';
 import type { FormaPagoVenta } from '../../types/venta.types';
-import type { BadgeVariant } from './presupuestos.types';
+import type {
+    BadgeVariant,
+    PresupuestoExtra,
+    PresupuestoItem,
+    PresupuestoRow,
+} from './presupuestos.types';
 
 /**
  * Helpers y constantes específicas de Presupuestos.
@@ -65,6 +70,23 @@ export const emptyCanje = () => ({
     valorTomado: '',
     observaciones: '',
 });
+
+/**
+ * Calcula el total de un presupuesto: suma de items + suma de extras - canje.
+ * Devuelve número (no formateado).
+ */
+export const calcTotal = (pres: PresupuestoRow): number => {
+    const items = (pres.items ?? []).reduce(
+        (s: number, i: PresupuestoItem) => s + Number(i.precioFinal ?? 0),
+        0,
+    );
+    const extras = (pres.extras ?? []).reduce(
+        (s: number, e: PresupuestoExtra) => s + Number(e.monto ?? 0),
+        0,
+    );
+    const canje = pres.canje ? Number(pres.canje.valorTomado ?? 0) : 0;
+    return items + extras - canje;
+};
 
 /** Estado inicial del form de creación. */
 export const blankForm = () => ({
