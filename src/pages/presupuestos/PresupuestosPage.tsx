@@ -20,13 +20,14 @@ import type {
     VendedorRef,
 } from './presupuestos.types';
 import {
-    FORMA_PAGO_OPTIONS_CONV,
     fmt,
     currencyFmt,
     STATUS,
     emptyItem,
     blankForm,
 } from './presupuestos.utils';
+import EditPresupuestoModal from './modals/EditPresupuestoModal';
+import ConvertirAVentaModal from './modals/ConvertirAVentaModal';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
@@ -820,85 +821,24 @@ const PresupuestosPage = () => {
             </Modal>
 
             {/* EDIT MODAL */}
-            <Modal
+            <EditPresupuestoModal
                 isOpen={editId !== null}
                 onClose={() => setEditId(null)}
-                title="Gestión de Auditoría"
-                subtitle="Ajuste el estado legal y administrativo de la cotización."
-                maxWidth="500px"
-                footer={(
-                    <>
-                        <Button variant="secondary" onClick={() => setEditId(null)}>Desistir</Button>
-                        <Button variant="primary" className="flex-1" onClick={handleEdit} loading={saving}>Acreditar Cambios</Button>
-                    </>
-                )}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-                    <div className="input-group">
-                        <label className="input-label">Estado del expediente</label>
-                        <select className="input-control" value={editForm.estado} onChange={e => setEditForm(f => ({ ...f, estado: e.target.value }))}>
-                            {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="input-group">
-                        <label className="input-label">Observaciones de auditoría</label>
-                        <textarea className="input-control" rows={4}
-                            value={editForm.observaciones}
-                            onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))}
-                            style={{ resize: 'vertical' }}
-                            placeholder="Justificación del cambio de estado o notas para vendedores…" />
-                    </div>
-                </div>
-            </Modal>
+                onSubmit={handleEdit}
+                saving={saving}
+                form={editForm}
+                onFormChange={setEditForm}
+            />
 
             {/* CONVERTIR EN VENTA MODAL */}
-            <Modal
+            <ConvertirAVentaModal
                 isOpen={convertirId !== null}
                 onClose={() => setConvertirId(null)}
-                title="Convertir en Venta"
-                subtitle="Definí los datos de cierre. El resto los toma del presupuesto."
-                maxWidth="520px"
-                footer={(
-                    <>
-                        <Button variant="secondary" onClick={() => setConvertirId(null)}>Cancelar</Button>
-                        <Button variant="primary" className="flex-1" onClick={handleConvertirEnVenta} loading={convertirSaving}>
-                            <ArrowRight size={16} className="mr-2" /> Crear venta
-                        </Button>
-                    </>
-                )}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-                        <div className="input-group">
-                            <label className="input-label">Forma de pago</label>
-                            <select className="input-control" value={convertirForm.formaPago}
-                                onChange={e => setConvertirForm(f => ({ ...f, formaPago: e.target.value as FormaPagoVenta }))}>
-                                {FORMA_PAGO_OPTIONS_CONV.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                        </div>
-                        <div className="input-group">
-                            <label className="input-label">Moneda</label>
-                            <select className="input-control" value={convertirForm.moneda}
-                                onChange={e => setConvertirForm(f => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
-                                <option value="ARS">ARS</option>
-                                <option value="USD">USD</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="input-group">
-                        <label className="input-label">Fecha de venta</label>
-                        <input type="date" className="input-control" value={convertirForm.fechaVenta}
-                            onChange={e => setConvertirForm(f => ({ ...f, fechaVenta: e.target.value }))} />
-                    </div>
-                    <div className="input-group">
-                        <label className="input-label">Observaciones</label>
-                        <textarea className="input-control" rows={3}
-                            value={convertirForm.observaciones}
-                            onChange={e => setConvertirForm(f => ({ ...f, observaciones: e.target.value }))}
-                            style={{ resize: 'vertical' }} />
-                    </div>
-                </div>
-            </Modal>
+                onSubmit={handleConvertirEnVenta}
+                saving={convertirSaving}
+                form={convertirForm}
+                onFormChange={setConvertirForm}
+            />
 
             {/* DELETE CONFIRM */}
             <ConfirmDialog
