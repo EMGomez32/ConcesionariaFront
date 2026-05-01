@@ -6,65 +6,27 @@ import { usuariosApi } from '../../api/usuarios.api';
 import { sucursalesApi } from '../../api/sucursales.api';
 import { vehiculosApi } from '../../api/vehiculos.api';
 import client from '../../api/client';
-import type { EstadoPresupuesto, Presupuesto } from '../../types/presupuesto.types';
+import type { EstadoPresupuesto } from '../../types/presupuesto.types';
 import type { FormaPagoVenta } from '../../types/venta.types';
-
-/* ── tipos locales ── */
-interface PresupuestoItem {
-    id: number;
-    vehiculoId?: number;
-    vehiculo?: { marca: string; modelo: string; dominio?: string; vin?: string };
-    precioLista: number | string;
-    descuento?: number | string;
-    precioFinal: number | string;
-}
-
-interface PresupuestoExtra {
-    id?: number;
-    descripcion?: string;
-    monto: number | string;
-}
-
-interface PresupuestoCanje {
-    descripcion?: string;
-    anio?: number | string;
-    km?: number | string;
-    dominio?: string;
-    valorTomado: number | string;
-    observaciones?: string;
-}
-
-interface PresupuestoRow extends Omit<Presupuesto, 'items'> {
-    items?: PresupuestoItem[];
-    extras?: PresupuestoExtra[];
-    canje?: PresupuestoCanje | null;
-    sucursal?: { nombre: string };
-    observaciones?: string;
-}
-
-interface ClienteRef {
-    id: number;
-    nombre: string;
-}
-
-interface SucursalRef {
-    id: number;
-    nombre: string;
-}
-
-interface VehiculoRef {
-    id: number;
-    marca: string;
-    modelo: string;
-    version?: string;
-    dominio?: string;
-    vin?: string;
-}
-
-interface VendedorRef {
-    id: number;
-    nombre: string;
-}
+// Types y utils extraídos a archivos separados (Sprint 4) — antes estaban
+// inline acá inflando la page a 1010 LOC.
+import type {
+    PresupuestoRow,
+    PresupuestoItem,
+    PresupuestoExtra,
+    ClienteRef,
+    SucursalRef,
+    VehiculoRef,
+    VendedorRef,
+} from './presupuestos.types';
+import {
+    FORMA_PAGO_OPTIONS_CONV,
+    fmt,
+    currencyFmt,
+    STATUS,
+    emptyItem,
+    blankForm,
+} from './presupuestos.utils';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
@@ -76,60 +38,6 @@ import {
     ArrowRightLeft, DollarSign, Calendar, User,
     MapPin, Hash, RefreshCw, Briefcase, Calculator, ArrowRight
 } from 'lucide-react';
-
-const FORMA_PAGO_OPTIONS_CONV: { value: FormaPagoVenta; label: string }[] = [
-    { value: 'contado', label: 'Contado / Efectivo' },
-    { value: 'transferencia', label: 'Transferencia Bancaria' },
-    { value: 'financiado_propio', label: 'Financiación Interna' },
-    { value: 'financiado_externo', label: 'Crédito Prendario / UVA' },
-    { value: 'canje_mas_diferencia', label: 'Canje + Saldo' },
-    { value: 'mixto', label: 'Pago Mixto' },
-];
-
-/* ── helpers ── */
-const today = () => new Date().toISOString().slice(0, 10);
-
-const genNro = () => {
-    const d = new Date();
-    return `P-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getTime()).slice(-4)}`;
-};
-
-const fmt = (v: string | null | undefined) =>
-    v ? new Date(v).toLocaleDateString('es-AR') : '-';
-
-const currencyFmt = (v: number | string, moneda = 'ARS') =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency: moneda, maximumFractionDigits: 0 }).format(Number(v));
-
-/* ── status config ── */
-type Variant = 'default' | 'info' | 'success' | 'danger' | 'warning';
-const STATUS: Record<EstadoPresupuesto, { label: string; variant: Variant }> = {
-    borrador: { label: 'Borrador', variant: 'default' },
-    enviado: { label: 'Enviado', variant: 'info' },
-    aceptado: { label: 'Aceptado', variant: 'success' },
-    rechazado: { label: 'Rechazado', variant: 'danger' },
-    vencido: { label: 'Vencido', variant: 'warning' },
-    cancelado: { label: 'Cancelado', variant: 'default' },
-};
-
-/* ── blank rows ── */
-const emptyItem = () => ({ vehiculoId: '', precioLista: '', descuento: '0', precioFinal: '' });
-
-const emptyCanje = () => ({ descripcion: '', anio: '', km: '', dominio: '', valorTomado: '', observaciones: '' });
-
-const blankForm = () => ({
-    nroPresupuesto: genNro(),
-    sucursalId: '',
-    clienteId: '',
-    vendedorId: '',
-    moneda: 'ARS' as 'ARS' | 'USD',
-    fechaCreacion: today(),
-    validoHasta: '',
-    observaciones: '',
-    items: [emptyItem()],
-    extras: [] as { descripcion: string; monto: string }[],
-    conCanje: false,
-    canje: emptyCanje(),
-});
 
 const PresupuestosPage = () => {
     const { addToast } = useUIStore();
