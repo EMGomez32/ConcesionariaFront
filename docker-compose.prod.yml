@@ -1,0 +1,28 @@
+# Override de PRODUCCIÓN.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Agrega backups automáticos de Postgres (pg_dump programado con retención).
+# Los dumps quedan en ./backups (host) — carpeta gitignoreada.
+
+services:
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: concesionaria-db-backup
+    restart: always
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-concesionaria}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_KEEP_WEEKS=4
+      - BACKUP_KEEP_MONTHS=6
+      - HEALTHCHECK_PORT=8080
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy

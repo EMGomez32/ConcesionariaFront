@@ -1,0 +1,30 @@
+# ─── Secretos / variables de entorno ───────────────────────────
+# NUNCA versionar archivos .env (contienen secretos). Solo .env.example.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# ─── Dependencias y builds ─────────────────────────────────────
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+
+# ─── Logs ──────────────────────────────────────────────────────
+logs/
+**/logs/
+*.log
+npm-debug.log*
+
+# ─── Backups de la base (dumps de pg_dump) ─────────────────────
+backups/
+
+# ─── Sistema / editor ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,24 @@
+# Override SOLO para desarrollo local.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Prisma Studio NO tiene autenticación y da acceso total de lectura/escritura a
+# la base multi-tenant. Por eso se sacó del docker-compose.yml (producción) y
+# vive únicamente acá, para uso local del equipo de desarrollo.
+# NUNCA agregar este servicio al compose de producción ni exponer el puerto 5555.
+
+services:
+  prisma-studio:
+    build:
+      context: ./BackConcesionaria
+      dockerfile: Dockerfile
+    container_name: concesionaria-prisma-studio
+    restart: "no"
+    ports:
+      - "5555:5555"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/concesionaria?sslmode=disable
+    command: npx prisma studio --port 5555 --browser none
+    depends_on:
+      - db
