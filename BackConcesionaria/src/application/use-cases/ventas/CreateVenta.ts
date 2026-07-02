@@ -25,7 +25,10 @@ export class CreateVenta {
             const venta = await tx.venta.create({
                 data: {
                     ...ventaData,
-                    estado: 'finalizada',
+                    // NOTA: el modelo Venta NO tiene un campo `estado`; el ciclo de la venta
+                    // se representa con `estadoEntrega` (default 'pendiente'). El anterior
+                    // `estado: 'finalizada'` era cruft de un schema viejo y rompía la creación
+                    // en runtime (PrismaClientValidationError: Unknown argument `estado`).
                     concesionariaId: vehiculo.concesionariaId, // Multi-tenancy inherited from vehicle
                     presupuestoId,
                     extras: { create: externos || [] },

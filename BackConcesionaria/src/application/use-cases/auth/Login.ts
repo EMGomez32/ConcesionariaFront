@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { ITokenService } from '../../../domain/services/ITokenService';
 import { IRefreshTokenRepository } from '../../../domain/repositories/IRefreshTokenRepository';
 import { UnauthorizedException, ForbiddenException } from '../../../domain/exceptions/BaseException';
-import prisma from '../../../infrastructure/database/prisma';
+import { rawPrisma } from '../../../infrastructure/database/prisma';
 import config from '../../../config';
 
 export class Login {
@@ -12,8 +12,11 @@ export class Login {
     ) { }
 
     async execute(email: string, pass: string) {
-        const usuario = await prisma.usuario.findFirst({
-            where: { email },
+        // rawPrisma: el login es PRE-tenant, así que se busca el usuario por email
+        // sin el filtro de tenant de la extensión (ahora fail-closed).
+        // Se preserva el filtro de soft-delete de forma explícita.
+        const usuario = await rawPrisma.usuario.findFirst({
+            where: { email, deletedAt: null },
             include: {
                 roles: { include: { rol: true } }
             }

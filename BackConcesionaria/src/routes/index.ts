@@ -26,6 +26,8 @@ import auditoriaRoutes from '../interface/routes/audit-log.routes';
 import billingRoutes from '../interface/routes/billing.routes';
 import debugRoutes from '../interface/routes/debug.routes';
 import ApiResponse from '../utils/ApiResponse';
+import { env } from '../config/env';
+import { authenticate } from '../interface/middlewares/authenticate.middleware';
 
 const router = express.Router();
 
@@ -34,11 +36,22 @@ router.get('/health', (req, res) => {
     res.send(ApiResponse.success({ status: 'UP', timestamp: new Date() }));
 });
 
-// Debug endpoints
-router.use('/debug', debugRoutes);
+// Debug endpoints — SOLO en desarrollo.
+// En producción NO se montan: exponían $queryRaw con emails, todas las
+// concesionarias y stack traces a cualquier usuario autenticado (fuga cross-tenant).
+if (env.NODE_ENV === 'development') {
+    router.use('/debug', debugRoutes);
+}
 
-// Auth
+// Auth (rutas públicas: login / refresh / logout)
 router.use('/auth', authRoutes);
+
+// ─────────────────────────────────────────────────────────────
+// A PARTIR DE ACÁ, TODO REQUIERE AUTENTICACIÓN (fail-closed).
+// Cualquier request sin un JWT válido recibe 401 antes de tocar un controller.
+// Rutas públicas (arriba): /health, /auth/*, y /debug solo en desarrollo.
+// ─────────────────────────────────────────────────────────────
+router.use(authenticate);
 
 // SaaS Core
 router.use('/concesionarias', concesionariaRoutes);

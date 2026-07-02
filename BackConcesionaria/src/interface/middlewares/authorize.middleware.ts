@@ -9,8 +9,11 @@ export const authorize = (...roles: string[]) => {
             throw new ForbiddenException('User context missing');
         }
 
-        const hasRole = roles.some(role => user.roles.includes(role));
-        if (!hasRole && !user.roles.includes('admin')) {
+        // super_admin (dueño del SaaS) es el ÚNICO bypass global, explícito y auditable.
+        // Se eliminó el bypass implícito de 'admin', que dejaba pasar a CUALQUIER admin
+        // a CUALQUIER chequeo de rol (p.ej. rutas super_admin-only).
+        const hasRole = user.roles.includes('super_admin') || roles.some(role => user.roles.includes(role));
+        if (!hasRole) {
             throw new ForbiddenException(`Access denied. Required roles: ${roles.join(', ')}`);
         }
         next();

@@ -10,6 +10,8 @@ export interface UserContext {
 export interface AppContext {
     user?: UserContext;
     correlationId?: string;
+    ip?: string;
+    userAgent?: string;
 }
 
 const storage = new AsyncLocalStorage<AppContext>();
@@ -26,6 +28,15 @@ export const context = {
     },
     getTenantId: (): number | undefined => {
         return storage.getStore()?.user?.concesionariaId || undefined;
+    },
+    isSuperAdmin: (): boolean => {
+        return storage.getStore()?.user?.roles?.includes('super_admin') ?? false;
+    },
+    getIp: (): string | undefined => {
+        return storage.getStore()?.ip;
+    },
+    getUserAgent: (): string | undefined => {
+        return storage.getStore()?.userAgent;
     },
     getCorrelationId: (): string | undefined => {
         return storage.getStore()?.correlationId;

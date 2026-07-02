@@ -1,7 +1,7 @@
 import { ITokenService } from '../../../domain/services/ITokenService';
 import { IRefreshTokenRepository } from '../../../domain/repositories/IRefreshTokenRepository';
 import { UnauthorizedException } from '../../../domain/exceptions/BaseException';
-import prisma from '../../../infrastructure/database/prisma';
+import { rawPrisma } from '../../../infrastructure/database/prisma';
 import config from '../../../config';
 
 export class RefreshAuth {
@@ -25,7 +25,8 @@ export class RefreshAuth {
 
             if (stored.expiresAt < new Date()) throw new Error('Expired');
 
-            const usuario = await prisma.usuario.findUnique({ where: { id: payload.userId } });
+            // rawPrisma: lookup PRE-tenant (la extensión es fail-closed). Soft-delete explícito.
+            const usuario = await rawPrisma.usuario.findFirst({ where: { id: payload.userId, deletedAt: null } });
             if (!usuario || !usuario.activo) throw new Error('Invalid user');
 
             // Rotation
