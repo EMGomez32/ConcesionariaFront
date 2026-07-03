@@ -1,14 +1,25 @@
+# Stack de producción de Autenza (autenza.nebulant.com.ar).
+#
+# Topología pensada para la Raspberry Pi (comparte host con otras apps):
+#   - db y backend son INTERNOS (sin puertos publicados) => no colisionan con
+#     los 3000/5432 que ya usan otras apps en la Pi.
+#   - el frontend (nginx) es el ÚNICO puerto publicado; sirve la SPA y proxya /api
+#     al backend. cloudflared rutea el subdominio -> ese puerto.
+#
+# Uso en la Pi:   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Uso en local:   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+name: autenza
+
 services:
   db:
     image: postgres:16-alpine
-    container_name: concesionaria-db
+    container_name: autenza-db
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD (definilo en el .env de la raiz)}
       POSTGRES_DB: ${POSTGRES_DB:-concesionaria}
-    ports:
-      - "5432:5432"
+    # Sin `ports`: la DB queda interna. Para exponerla en local usar docker-compose.dev.yml.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,10 +33,9 @@ services:
     build:
       context: ./BackConcesionaria
       dockerfile: Dockerfile
-    container_name: concesionaria-backend
+    container_name: autenza-backend
     restart: always
-    ports:
-      - "3000:3000"
+    # Sin `ports`: el backend es interno; el frontend (nginx) lo proxya en /api.
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-concesionaria}?sslmode=disable
       - PORT=3000
@@ -34,9 +44,9 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?Falta JWT_REFRESH_SECRET (genera otro con openssl rand -hex 32)}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
       - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
-      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     # migrate deploy (NO db push): aplica solo migraciones versionadas, es idempotente
-    # y NO destruye datos ante drift. Requiere que las migraciones representen el schema.
+    # y NO destruye datos ante drift. La URL la resuelve prisma.config.ts desde DATABASE_URL.
     command: sh -c "npx prisma migrate deploy && npm start"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
@@ -52,10 +62,15 @@ services:
     build:
       context: ./FrontConcesionaria
       dockerfile: Dockerfile
-    container_name: concesionaria-frontend
+      args:
+        # URL del backend horneada en el bundle. Default "/api" (relativa):
+        # nginx del propio frontend proxya /api -> backend. Un solo subdominio, sin CORS.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    container_name: autenza-frontend
     restart: always
+    # Único puerto publicado. Local: 80 (localhost). En la Pi: FRONTEND_HOST_PORT=8082.
     ports:
-      - "80:80"
+      - "${FRONTEND_HOST_PORT:-80}:80"
     depends_on:
       backend:
         condition: service_healthy
